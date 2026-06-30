@@ -53,24 +53,6 @@ Whusup is a full-stack social networking application built with PHP and AWS clou
 
 ---
 
-## Screenshots
-
-Add screenshots to:
-
-```text
-docs/images/
-```
-
-Example:
-
-```markdown
-![Landing Page](docs/images/landing-page.png)
-
-![Dashboard](docs/images/dashboard.png)
-```
-
----
-
 ## Architecture
 
 ```text
