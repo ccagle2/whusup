@@ -11,3 +11,4 @@ vendor/
 node_modules/
 log/
 storage/
+config/aws.php
