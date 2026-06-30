@@ -3,152 +3,192 @@
 ```{=html}
 <p align="center">
 ```
-`<img src="https://img.shields.io/badge/PHP-8+-777BB4?style=for-the-badge&logo=php&logoColor=white">`{=html}
-`<img src="https://img.shields.io/badge/MariaDB-11+-003545?style=for-the-badge&logo=mariadb&logoColor=white">`{=html}
-`<img src="https://img.shields.io/badge/Bootstrap-5-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white">`{=html}
-`<img src="https://img.shields.io/badge/AWS-S3%20%7C%20CloudFront%20%7C%20SES%20%7C%20EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white">`{=html}
+`<img src="docs/images/whusup-banner.png" alt="Whusup Banner" width="900">`{=html}
 ```{=html}
 </p>
 ```
-A modern social networking platform built from the ground up using
-**PHP**, **MariaDB**, **Bootstrap**, and **Amazon Web Services**.
-
-Whusup was created as a full-stack web application to explore modern
-social networking features while emphasizing performance, security,
-responsive design, and cloud-native architecture.
+```{=html}
+<p align="center">
+```
+`<strong>`{=html}Real People. No Ads.`</strong>`{=html}`<br>`{=html} A
+modern social networking platform engineered with PHP, MariaDB,
+Bootstrap, and AWS.
+```{=html}
+</p>
+```
+```{=html}
+<p align="center">
+```
+`<img src="https://img.shields.io/badge/PHP-8+-777BB4?style=for-the-badge&logo=php&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/MariaDB-11+-003545?style=for-the-badge&logo=mariadb&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/Bootstrap-5-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/AWS-EC2%20%7C%20S3%20%7C%20CloudFront%20%7C%20SES%20%7C%20Rekognition-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white">`{=html}
+```{=html}
+</p>
+```
 
 ------------------------------------------------------------------------
 
-# Features
+## Overview
 
-## User Accounts
+Whusup is a cloud-hosted social networking application built as a
+full-stack software engineering project. The platform combines a
+responsive Bootstrap interface, asynchronous user interactions, cloud
+media delivery, and secure backend services into a cohesive social
+experience.
+
+## Key Features
+
+### Accounts
 
 -   Secure registration and login
 -   Email verification
+-   Profile photos
 -   Password hashing
--   User profiles
--   Profile picture uploads
+-   Session authentication
 
-## Social Features
+### Social
 
 -   Create, edit, and delete posts
 -   Image uploads
--   Nested comments and replies
--   Like posts
--   Like comments
--   Follow / unfollow users
--   Personalized feed
--   Public homepage
+-   Nested comments
+-   Post and comment likes
+-   Follow / unfollow
+-   Personalized and public feeds
 -   Relative timestamps
--   Infinite scrolling
-
-## Modern User Experience
-
--   Responsive Bootstrap 5 interface
 -   AJAX-powered interactions
--   Live notifications
--   Mobile-friendly design
--   Clickable URLs inside posts
--   Expandable images
--   Modern card layout
 
-## Cloud Integration
+### Cloud
 
--   Amazon EC2 hosting
--   Amazon S3 media storage
--   Amazon CloudFront CDN
--   Amazon SES email verification
--   Amazon Rekognition image moderation
+-   Amazon EC2
+-   Amazon S3
+-   Amazon CloudFront
+-   Amazon SES
+-   Amazon Rekognition
 
 ------------------------------------------------------------------------
 
-# Technology Stack
+## Screenshots
 
-## Backend
+Create a folder:
 
--   PHP
--   PDO
--   MariaDB
--   Apache
+``` text
+docs/
+└── images/
+```
 
-## Frontend
+Recommended files:
 
--   Bootstrap 5
--   HTML5
--   CSS3
--   JavaScript
--   AJAX
--   jQuery
+  Image           Filename
+  --------------- -------------------
+  Hero banner     whusup-banner.png
+  Landing page    landing-page.png
+  Dashboard       dashboard.png
+  Notifications   notifications.png
+  Profile         profile.png
+  Mobile          mobile.png
 
-## Cloud Services
+Example:
 
--   AWS EC2
--   AWS S3
--   AWS CloudFront
--   AWS SES
--   AWS Rekognition
+``` markdown
+![Landing](docs/images/landing-page.png)
+
+![Dashboard](docs/images/dashboard.png)
+```
 
 ------------------------------------------------------------------------
 
-# Security
+## Architecture
 
-Current protections include:
+``` text
+Browser
+   │
+Bootstrap UI
+   │
+Apache (EC2)
+   │
+PHP Application
+ ├── MariaDB
+ ├── Amazon S3
+ ├── CloudFront
+ ├── Amazon SES
+ └── Amazon Rekognition
+```
+
+------------------------------------------------------------------------
+
+## Technology
+
+  Layer      Technology
+  ---------- --------------------------------------------
+  Backend    PHP, PDO
+  Database   MariaDB
+  Frontend   Bootstrap 5, HTML5, CSS3, JavaScript, AJAX
+  Cloud      EC2, S3, CloudFront, SES, Rekognition
+
+------------------------------------------------------------------------
+
+## Security
 
 -   Prepared SQL statements
 -   Password hashing
--   Secure session authentication
 -   Email verification
--   Image moderation
+-   Session authentication
 -   Input validation
--   Spam mitigation
--   Environment-based configuration
--   CloudFront private media delivery
+-   Spam protection
+-   Sensitive configuration excluded from Git
 
 ------------------------------------------------------------------------
 
-# Project Structure
+## Roadmap
 
-``` text
-assets/
-auth/
-config/
-includes/
-public/
-sql/
-composer.json
-README.md
-```
+### Completed
 
-------------------------------------------------------------------------
+-   Authentication
+-   Notifications
+-   Image uploads
+-   AWS integration
+-   Follow system
+-   Responsive design
 
-# Future Roadmap
+### Planned
 
 -   Video uploads
 -   Direct messaging
--   Search improvements
--   Trending posts
--   User mentions
+-   Search
 -   Hashtags
--   Progressive Web App (PWA)
--   Push notifications
+-   Mentions
+-   Trending
 -   Dark mode
--   Advanced moderation tools
+-   Progressive Web App
 
 ------------------------------------------------------------------------
 
-# Local Development
+## Getting Started
 
 ``` bash
 git clone https://github.com/ccagle2/whusup.git
+cd whusup
 composer install
 ```
 
-Configure your environment variables, database, AWS credentials, import
-the SQL schema, and start Apache/MariaDB.
+Then configure:
+
+1.  `.env`
+2.  AWS credentials
+3.  Database
+4.  Apache
+5.  SQL schema
 
 ------------------------------------------------------------------------
 
-# Author
+## Contributing
+
+Issues and pull requests are welcome.
+
+------------------------------------------------------------------------
+
+## Author
 
 **Christopher Cagle**
 
@@ -158,5 +198,4 @@ GitHub: https://github.com/ccagle2
 
 ## License
 
-This repository is provided for educational, demonstration, and
-portfolio purposes.
+Educational, demonstration, and portfolio use.
