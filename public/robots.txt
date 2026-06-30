@@ -1,0 +1,15 @@
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
+User-agent: *
+
+Allow: /
+
+Disallow: /ajax/
+Disallow: /logout.php
+Disallow: /notifications.php
+
+Sitemap: https://whusup.com/sitemap.xml

@@ -1,0 +1,13 @@
+.env
+*.log
+.aws/
+uploads/
+tmp/
+cache/
+.DS_Store
+.vscode/
+.idea/
+vendor/
+node_modules/
+log/
+storage/

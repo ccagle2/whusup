@@ -1,0 +1,6 @@
+{
+    "name": "whusup/app",
+    "require": {
+        "aws/aws-sdk-php": "^3.382"
+    }
+}
