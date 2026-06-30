@@ -1,121 +1,162 @@
 # Whusup
 
-Whusup is a modern social networking platform built with PHP, MariaDB, Bootstrap, and AWS cloud services.
+```{=html}
+<p align="center">
+```
+`<img src="https://img.shields.io/badge/PHP-8+-777BB4?style=for-the-badge&logo=php&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/MariaDB-11+-003545?style=for-the-badge&logo=mariadb&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/Bootstrap-5-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white">`{=html}
+`<img src="https://img.shields.io/badge/AWS-S3%20%7C%20CloudFront%20%7C%20SES%20%7C%20EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white">`{=html}
+```{=html}
+</p>
+```
+A modern social networking platform built from the ground up using
+**PHP**, **MariaDB**, **Bootstrap**, and **Amazon Web Services**.
 
-The project focuses on providing a clean, responsive, and privacy-conscious social experience while demonstrating scalable full-stack web development techniques.
+Whusup was created as a full-stack web application to explore modern
+social networking features while emphasizing performance, security,
+responsive design, and cloud-native architecture.
 
----
+------------------------------------------------------------------------
 
-## Features
+# Features
 
-- User registration and secure authentication
-- Email verification
-- User profiles with profile pictures
-- Create, edit, and delete posts
-- Image uploads with AWS S3
-- CloudFront CDN integration
-- Nested comments and replies
-- Post and comment likes
-- Follow / unfollow users
-- Personalized feed
-- Public homepage
-- AJAX-powered interactions
-- Responsive Bootstrap interface
-- Notifications dashboard
-- Spam protection
-- Image moderation
-- Relative timestamps
-- Mobile-first design
+## User Accounts
 
----
+-   Secure registration and login
+-   Email verification
+-   Password hashing
+-   User profiles
+-   Profile picture uploads
 
-## Technology Stack
+## Social Features
 
-### Backend
+-   Create, edit, and delete posts
+-   Image uploads
+-   Nested comments and replies
+-   Like posts
+-   Like comments
+-   Follow / unfollow users
+-   Personalized feed
+-   Public homepage
+-   Relative timestamps
+-   Infinite scrolling
 
-- PHP
-- MariaDB
-- PDO
-- Apache
+## Modern User Experience
 
-### Frontend
+-   Responsive Bootstrap 5 interface
+-   AJAX-powered interactions
+-   Live notifications
+-   Mobile-friendly design
+-   Clickable URLs inside posts
+-   Expandable images
+-   Modern card layout
 
-- Bootstrap 5
-- JavaScript
-- AJAX
-- HTML5
-- CSS3
+## Cloud Integration
 
-### AWS
+-   Amazon EC2 hosting
+-   Amazon S3 media storage
+-   Amazon CloudFront CDN
+-   Amazon SES email verification
+-   Amazon Rekognition image moderation
 
-- Amazon EC2
-- Amazon S3
-- Amazon CloudFront
-- Amazon SES
-- Amazon Rekognition
+------------------------------------------------------------------------
 
----
+# Technology Stack
 
-## Security
+## Backend
 
-Whusup emphasizes security through:
+-   PHP
+-   PDO
+-   MariaDB
+-   Apache
 
-- Password hashing
-- Prepared SQL statements
-- CSRF protection
-- Email verification
-- Image moderation
-- Environment-based configuration
-- Secure session handling
+## Frontend
 
----
+-   Bootstrap 5
+-   HTML5
+-   CSS3
+-   JavaScript
+-   AJAX
+-   jQuery
 
-## Project Status
+## Cloud Services
 
-Whusup is actively under development.
+-   AWS EC2
+-   AWS S3
+-   AWS CloudFront
+-   AWS SES
+-   AWS Rekognition
 
-Current focus areas include:
+------------------------------------------------------------------------
 
-- Performance optimization
-- Enhanced notifications
-- Video uploads
-- Additional moderation tools
-- Improved search functionality
+# Security
 
----
+Current protections include:
 
-## Running Locally
+-   Prepared SQL statements
+-   Password hashing
+-   Secure session authentication
+-   Email verification
+-   Image moderation
+-   Input validation
+-   Spam mitigation
+-   Environment-based configuration
+-   CloudFront private media delivery
 
-Clone the repository:
+------------------------------------------------------------------------
 
-```bash
-git clone https://github.com/ccagle2/whusup.git
+# Project Structure
+
+``` text
+assets/
+auth/
+config/
+includes/
+public/
+sql/
+composer.json
+README.md
 ```
 
-Install dependencies:
+------------------------------------------------------------------------
 
-```bash
+# Future Roadmap
+
+-   Video uploads
+-   Direct messaging
+-   Search improvements
+-   Trending posts
+-   User mentions
+-   Hashtags
+-   Progressive Web App (PWA)
+-   Push notifications
+-   Dark mode
+-   Advanced moderation tools
+
+------------------------------------------------------------------------
+
+# Local Development
+
+``` bash
+git clone https://github.com/ccagle2/whusup.git
 composer install
 ```
 
-Configure your environment variables.
+Configure your environment variables, database, AWS credentials, import
+the SQL schema, and start Apache/MariaDB.
 
-Create your database.
+------------------------------------------------------------------------
 
-Import the SQL schema.
+# Author
 
-Configure AWS credentials.
+**Christopher Cagle**
 
-Launch using Apache or your preferred PHP web server.
+GitHub: https://github.com/ccagle2
 
----
+------------------------------------------------------------------------
 
 ## License
 
-This project is provided for educational and portfolio purposes.
-
----
-
-## Author
-
-Christopher Cagle
+This repository is provided for educational, demonstration, and
+portfolio purposes.
