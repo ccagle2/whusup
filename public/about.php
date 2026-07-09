@@ -110,12 +110,10 @@ body {
         </h1>
 
         <div class="about-text">
-            Social media has become a dominant force in people's lives over the last 20 years. 
-            While connection is good, most current social media platforms are run by giant corporations 
-            using complicated algorithms to hook you to the screen, while spamming you with ads and marketing. 
-            Whusup does not contain any ads or spam and never will, uses simple but effective filtering, 
-            and allows you to connect with friends and people you know.
-            Your information here is secure and will never be used for marketing or spam. 
+            Whusup is a modern social media platform focused on sharing topics and insights. 
+            It is totally ad free and always will be. 
+            All topics and posts are user based and there is no priority given based on anything other 
+            than user popularity. 
         </div>
 
         <div class="about-button-row">

@@ -5,10 +5,10 @@ User-agent: Facebot
 Allow: /
 
 User-agent: *
-
 Allow: /
 
 Disallow: /ajax/
+Disallow: /public/ajax/
 Disallow: /logout.php
 Disallow: /notifications.php
 

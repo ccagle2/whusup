@@ -90,8 +90,8 @@ if (!empty($_SESSION['user_id'])) {
     <h1>Welcome to Whusup</h1>
 
     <p>
-        No Ads. No spam. No profit driven algorithms.<br>
-        Just you and your friends connecting.<br>
+        Social Media without the Ads and Spam.<br>
+        Just content driven by you.<br>
         Join us as we grow the platform.
     </p>
 

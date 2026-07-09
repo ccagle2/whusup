@@ -10,7 +10,9 @@ define('RECENT_POSTS_AJAX_REQUEST', true);
 
 try {
     ob_start();
-    require __DIR__ . '/../../includes/recent_posts.php';
+
+    require __DIR__ . '/../../includes/posts/feed.php';
+
     $html = ob_get_clean();
 
     echo json_encode([
@@ -24,9 +26,10 @@ try {
         ob_end_clean();
     }
 
-    error_log('load_more_posts.php failed: ' . $e->getMessage());
+    error_log('load_feed.php failed: ' . $e->getMessage());
 
     http_response_code(500);
+
     echo json_encode([
         'success' => false,
         'message' => 'Could not load more posts.'

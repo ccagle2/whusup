@@ -210,7 +210,7 @@ $first_name = explode(' ', trim($_SESSION['user_name'] ?? 'User'))[0];
                     href="<?= htmlspecialchars(dashboardUrl('manage_friends', $feed_filter, $sort)) ?>" 
                     class="dashboard-action-button dashboard-follow-button"
                 >
-                    Find Friends
+                    Follow Friends
                 </a>
 
                 <a 
@@ -252,12 +252,12 @@ switch ($page) {
         break;
 
     case 'post':
-        include '../includes/post.php';
+        include '../includes/create_post.php';
         break;
 
     case 'social_feed':
     default:
-        include '../includes/recent_posts.php';
+        include '../includes/posts/feed.php';
         break;
 }
 

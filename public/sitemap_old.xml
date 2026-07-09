@@ -10,12 +10,4 @@
         <loc>https://whusup.com/about.php</loc>
     </url>
 
-    <url>
-        <loc>https://whusup.com/signup.php</loc>
-    </url>
-
-    <url>
-        <loc>https://whusup.com/login.php</loc>
-    </url>
-
 </urlset>
