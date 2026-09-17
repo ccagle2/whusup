@@ -9,6 +9,17 @@ $ses = $awsConfig['ses'];
 $message = '';
 $messageType = '';
 
+/*
+ * Lightweight signup anti-automation settings.
+ *
+ * These are intentionally conservative so normal users are unlikely
+ * to encounter them while automated bursts are slowed or rejected.
+ */
+const SIGNUP_MIN_FORM_SECONDS = 3;
+const SIGNUP_IP_LIMIT_15_MINUTES = 10;
+const SIGNUP_IP_LIMIT_24_HOURS = 30;
+const SIGNUP_EMAIL_LIMIT_60_MINUTES = 5;
+
 function get_client_ip_address(): ?string {
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
         return trim($_SERVER['HTTP_CF_CONNECTING_IP']);
@@ -55,6 +66,75 @@ function log_signup_attempt(PDO $pdo, string $name, string $email, int $success 
     } catch (Exception $e) {
         error_log('Signup log failed: ' . $e->getMessage());
     }
+}
+
+function signup_rate_limit_reason(
+    PDO $pdo,
+    ?string $ipAddress,
+    string $email
+): ?string {
+
+    try {
+
+        if (!empty($ipAddress)) {
+
+            $stmt = $pdo->prepare("
+                SELECT
+                    SUM(created_at >= (NOW() - INTERVAL 15 MINUTE)) AS attempts_15m,
+                    SUM(created_at >= (NOW() - INTERVAL 24 HOUR)) AS attempts_24h
+                FROM signup_log
+                WHERE ip_address = :ip_address
+                  AND created_at >= (NOW() - INTERVAL 24 HOUR)
+            ");
+
+            $stmt->execute([
+                ':ip_address' => $ipAddress
+            ]);
+
+            $counts = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+            $attempts15m = (int) ($counts['attempts_15m'] ?? 0);
+            $attempts24h = (int) ($counts['attempts_24h'] ?? 0);
+
+            if ($attempts15m >= SIGNUP_IP_LIMIT_15_MINUTES) {
+                return 'Too many signup attempts from this IP in 15 minutes.';
+            }
+
+            if ($attempts24h >= SIGNUP_IP_LIMIT_24_HOURS) {
+                return 'Too many signup attempts from this IP in 24 hours.';
+            }
+        }
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM signup_log
+                WHERE email = :email
+                  AND created_at >= (NOW() - INTERVAL 60 MINUTE)
+            ");
+
+            $stmt->execute([
+                ':email' => $email
+            ]);
+
+            $emailAttempts = (int) $stmt->fetchColumn();
+
+            if ($emailAttempts >= SIGNUP_EMAIL_LIMIT_60_MINUTES) {
+                return 'Too many signup attempts for this email address.';
+            }
+        }
+
+    } catch (PDOException $e) {
+
+        /*
+         * A logging/rate-limit lookup failure should not take signup offline.
+         * Record it for server review and let normal validation continue.
+         */
+        error_log('Signup rate-limit lookup failed: ' . $e->getMessage());
+    }
+
+    return null;
 }
 
 function is_valid_real_name(string $name): bool {
@@ -140,6 +220,68 @@ function email_domain_has_mx(string $email): bool {
     return checkdnsrr($domain, 'MX');
 }
 
+/*
+ * Generate an initial public display name from the verified signup name.
+ *
+ * display_name is UNIQUE in user_profiles. If the person's full name is
+ * already in use, append a simple numeric suffix while keeping the value
+ * within the 100-character application/database limit.
+ */
+function generate_unique_display_name(PDO $pdo, string $name): string {
+    $baseName = trim(preg_replace('/\s+/', ' ', $name));
+
+    if ($baseName === '') {
+        throw new Exception('Could not generate display name.');
+    }
+
+    if (function_exists('mb_substr')) {
+        $baseName = mb_substr($baseName, 0, 100, 'UTF-8');
+    } else {
+        $baseName = substr($baseName, 0, 100);
+    }
+
+    $candidate = $baseName;
+    $suffixNumber = 2;
+
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM user_profiles
+        WHERE display_name = :display_name
+        LIMIT 1
+    ");
+
+    while (true) {
+        $stmt->execute([
+            ':display_name' => $candidate
+        ]);
+
+        if (!$stmt->fetchColumn()) {
+            return $candidate;
+        }
+
+        $suffix = ' ' . $suffixNumber;
+
+        $suffixLength = function_exists('mb_strlen')
+            ? mb_strlen($suffix, 'UTF-8')
+            : strlen($suffix);
+
+        $baseLimit = 100 - $suffixLength;
+
+        if (function_exists('mb_substr')) {
+            $candidateBase = mb_substr($baseName, 0, $baseLimit, 'UTF-8');
+        } else {
+            $candidateBase = substr($baseName, 0, $baseLimit);
+        }
+
+        $candidate = rtrim($candidateBase) . $suffix;
+        $suffixNumber++;
+
+        if ($suffixNumber > 100000) {
+            throw new Exception('Could not generate a unique display name.');
+        }
+    }
+}
+
 function sendVerificationEmail($ses, string $toEmail, string $name, string $verificationLink): void {
     $fromEmail = 'noreply@whusup.com';
     $fromName = 'Whusup';
@@ -197,6 +339,16 @@ function sendVerificationEmail($ses, string $toEmail, string $name, string $veri
     ]);
 }
 
+/*
+ * A valid signup submission must first load this page so it can receive
+ * a session-bound CSRF token and form-start timestamp.
+ */
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+
+    $_SESSION['signup_csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['signup_form_started_at'] = time();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $name = trim($_POST['name'] ?? '');
@@ -206,9 +358,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
+    /*
+     * Anti-automation fields.
+     */
+    $submittedCsrfToken = $_POST['csrf_token'] ?? '';
+    $honeypotValue = trim($_POST['website'] ?? '');
+
+    $sessionCsrfToken = $_SESSION['signup_csrf_token'] ?? '';
+    $formStartedAt = (int) ($_SESSION['signup_form_started_at'] ?? 0);
+
+    $elapsedFormSeconds = $formStartedAt > 0
+        ? time() - $formStartedAt
+        : 0;
+
+    $clientIpAddress = get_client_ip_address();
+
     $failureReason = null;
 
-    if (empty($name) || empty($email) || empty($password) || empty($confirmPassword)) {
+    /*
+     * Validate anti-automation controls before performing DNS or account
+     * creation work. Messages shown to users intentionally do not disclose
+     * which bot signal was triggered.
+     */
+    if (
+        !is_string($submittedCsrfToken)
+        || $sessionCsrfToken === ''
+        || !hash_equals($sessionCsrfToken, $submittedCsrfToken)
+    ) {
+
+        $failureReason = "Invalid signup CSRF token.";
+        $message = "Your signup session expired. Please refresh the page and try again.";
+        $messageType = "danger";
+
+    } elseif ($honeypotValue !== '') {
+
+        $failureReason = "Signup honeypot triggered.";
+        $message = "We could not complete your registration. Please refresh the page and try again.";
+        $messageType = "danger";
+
+    } elseif (
+        $formStartedAt <= 0
+        || $elapsedFormSeconds < SIGNUP_MIN_FORM_SECONDS
+    ) {
+
+        $failureReason = "Signup submitted too quickly.";
+        $message = "We could not complete your registration. Please wait a moment and try again.";
+        $messageType = "danger";
+
+    } elseif (
+        ($rateLimitReason = signup_rate_limit_reason(
+            $pdo,
+            $clientIpAddress,
+            $email
+        )) !== null
+    ) {
+
+        $failureReason = $rateLimitReason;
+        $message = "Too many signup attempts. Please wait and try again later.";
+        $messageType = "danger";
+
+    } elseif (empty($name) || empty($email) || empty($password) || empty($confirmPassword)) {
 
         $failureReason = "All fields are required.";
         $message = "All fields are required.";
@@ -307,8 +516,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newUser = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if (!$newUser || empty($newUser['id'])) {
-                    throw new Exception('Could not create verification record.');
+                    throw new Exception('Could not create user account.');
                 }
+
+                /*
+                 * Every Whusup user must have exactly one matching profile.
+                 *
+                 * The signup form currently collects one full legal/account name.
+                 * Keep users.name authoritative and initialize the structured
+                 * profile fields conservatively as:
+                 *   first_name = first name token
+                 *   last_name  = everything after the first token
+                 *
+                 * The user can review/correct these later in My Account.
+                 */
+                $nameParts = preg_split('/\s+/', $name, 2, PREG_SPLIT_NO_EMPTY);
+
+                $firstName = trim($nameParts[0] ?? '');
+                $lastName = trim($nameParts[1] ?? '');
+
+                if ($firstName === '' || $lastName === '') {
+                    throw new Exception('Could not derive first and last name for profile.');
+                }
+
+                $initialDisplayName = generate_unique_display_name($pdo, $name);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_profiles (
+                        user_id,
+                        first_name,
+                        last_name,
+                        display_name,
+                        is_private,
+                        allow_email_notifications
+                    )
+                    VALUES (
+                        :user_id,
+                        :first_name,
+                        :last_name,
+                        :display_name,
+                        0,
+                        1
+                    )
+                ");
+
+                $stmt->execute([
+                    ':user_id' => $newUser['id'],
+                    ':first_name' => $firstName,
+                    ':last_name' => $lastName,
+                    ':display_name' => $initialDisplayName
+                ]);
 
                 $stmt = $pdo->prepare("
                     INSERT INTO email_verifications (user_id, token_hash, expires_at)
@@ -352,6 +609,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+/*
+ * If this POST did not redirect after successful registration, issue a fresh
+ * token/timestamp for the corrected form that is about to be rendered.
+ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['signup_csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['signup_form_started_at'] = time();
+}
+
+$signupCsrfToken = $_SESSION['signup_csrf_token'] ?? '';
 
 include '../includes/header.php';
 include '../includes/navbar.php';
@@ -491,6 +759,17 @@ body {
     right: 0;
 }
 
+.signup-honeypot {
+    position: absolute !important;
+    left: -10000px !important;
+    top: auto !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 @media (max-width: 768px) {
 
     .auth-page {
@@ -543,6 +822,30 @@ body {
 
                         <form method="POST" action="">
 
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="<?= htmlspecialchars($signupCsrfToken, ENT_QUOTES, 'UTF-8') ?>"
+                            >
+
+                            <div
+                                class="signup-honeypot"
+                                aria-hidden="true"
+                            >
+                                <label for="signupWebsite">
+                                    Website
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="website"
+                                    id="signupWebsite"
+                                    value=""
+                                    tabindex="-1"
+                                    autocomplete="off"
+                                >
+                            </div>
+
                             <div class="form-floating mb-3">
 
                                 <input
@@ -559,7 +862,7 @@ body {
                                 >
 
                                 <label for="registerName">
-                                    Full name
+                                    Full Name
                                 </label>
 
                             </div>

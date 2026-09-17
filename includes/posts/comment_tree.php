@@ -22,7 +22,7 @@ function renderCommentTree($comments, $parent_id, $post_id, $user_id, $is_logged
             data-comment-id="<?= htmlspecialchars($comment_id) ?>"
             data-parent-comment-id="<?= htmlspecialchars($comment['parent_comment_id'] ?? '') ?>"
         >
-            <div class="comment-name <?= !$is_logged_in ? 'blurred-name' : '' ?>">
+            <div class="comment-name">
                 <?= htmlspecialchars(ucwords($comment['name'])) ?>
             </div>
 

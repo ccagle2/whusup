@@ -920,8 +920,202 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.querySelectorAll(".comment-icon-toggle").forEach(attachCommentIconToggle);
 
+    /*
+     * Record a view only after at least 50% of a post card has remained
+     * visible for two continuous seconds.
+     *
+     * One shared observer handles both initial cards and cards added later
+     * through infinite scrolling.
+     */
+    const postViewTimers = new WeakMap();
+
+    const postViewObserver = "IntersectionObserver" in window
+        ? new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                const postCard = entry.target;
+
+                if (
+                    !postCard ||
+                    postCard.dataset.viewTrackingComplete === "1"
+                ) {
+                    postViewObserver.unobserve(postCard);
+                    return;
+                }
+
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
+                    if (postViewTimers.has(postCard)) {
+                        return;
+                    }
+
+                    const timer = window.setTimeout(function () {
+                        postViewTimers.delete(postCard);
+
+                        if (
+                            document.hidden ||
+                            postCard.dataset.viewTrackingComplete === "1" ||
+                            postCard.dataset.viewRequestPending === "1"
+                        ) {
+                            return;
+                        }
+
+                        const postId = String(
+                            postCard.dataset.postId || ""
+                        ).trim();
+
+                        if (!/^\d+$/.test(postId) || postId === "0") {
+                            postCard.dataset.viewTrackingComplete = "1";
+                            postViewObserver.unobserve(postCard);
+                            return;
+                        }
+
+                        postCard.dataset.viewRequestPending = "1";
+
+                        fetch("/ajax/post_view.php", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            },
+                            credentials: "same-origin",
+                            cache: "no-store",
+                            body: JSON.stringify({
+                                post_id: parseInt(postId, 10)
+                            })
+                        })
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error(
+                                    "Post view request failed with status "
+                                    + response.status
+                                );
+                            }
+
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            if (!data || data.success !== true) {
+                                throw new Error(
+                                    data && data.message
+                                        ? data.message
+                                        : "Post view request was unsuccessful."
+                                );
+                            }
+
+                            const numericCount = Number.parseInt(
+                                data.view_count,
+                                10
+                            );
+
+                            if (Number.isFinite(numericCount)) {
+                                const formattedCount =
+                                    numericCount.toLocaleString();
+
+                                const countElement = postCard.querySelector(
+                                    ".post-view-count"
+                                );
+
+                                if (countElement) {
+                                    countElement.textContent = formattedCount;
+                                }
+
+                                const indicator = postCard.querySelector(
+                                    ".post-view-indicator"
+                                );
+
+                                if (indicator) {
+                                    const viewLabel =
+                                        formattedCount
+                                        + (numericCount === 1
+                                            ? " view"
+                                            : " views");
+
+                                    indicator.title = viewLabel;
+                                    indicator.setAttribute(
+                                        "aria-label",
+                                        viewLabel
+                                    );
+                                }
+                            }
+
+                            /*
+                             * A recent duplicate or owner view is still a
+                             * completed result, so do not request it again
+                             * during this page load.
+                             */
+                            postCard.dataset.viewTrackingComplete = "1";
+                            postViewObserver.unobserve(postCard);
+                        })
+                        .catch(function (error) {
+                            /*
+                             * Allow another attempt if the request failed due
+                             * to a temporary network or server problem.
+                             */
+                            delete postCard.dataset.viewRequestPending;
+
+                            console.error(
+                                "Post view tracking error:",
+                                error
+                            );
+                        })
+                        .finally(function () {
+                            if (
+                                postCard.dataset.viewTrackingComplete === "1"
+                            ) {
+                                delete postCard.dataset.viewRequestPending;
+                            }
+                        });
+                    }, 2000);
+
+                    postViewTimers.set(postCard, timer);
+                    return;
+                }
+
+                const activeTimer = postViewTimers.get(postCard);
+
+                if (activeTimer) {
+                    window.clearTimeout(activeTimer);
+                    postViewTimers.delete(postCard);
+                }
+            });
+        }, {
+            threshold: [0, 0.75, 1]
+        })
+        : null;
+
+    function observePostView(postCard) {
+        if (
+            !postCard ||
+            !postViewObserver ||
+            postCard.dataset.viewObserverBound === "1"
+        ) {
+            return;
+        }
+
+        postCard.dataset.viewObserverBound = "1";
+        postViewObserver.observe(postCard);
+    }
+
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) {
+            return;
+        }
+
+        document.querySelectorAll(
+            '.recent-post-card[data-view-observer-bound="1"]'
+        ).forEach(function (postCard) {
+            const activeTimer = postViewTimers.get(postCard);
+
+            if (activeTimer) {
+                window.clearTimeout(activeTimer);
+                postViewTimers.delete(postCard);
+            }
+        });
+    });
+
     function initializeRecentPostCard(postCard) {
         if (!postCard) return;
+
+        observePostView(postCard);
 
         postCard.querySelectorAll(".whusup-gallery-image").forEach(function (image) {
             markPostImageOrientation(image);

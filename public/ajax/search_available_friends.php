@@ -19,12 +19,13 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 $search = trim($_GET['friend_search'] ?? '');
-$offset = max(0, (int)($_GET['offset'] ?? 0));
+$offset = max(0, (int) ($_GET['offset'] ?? 0));
 $limit = 20;
 
 try {
 
     $search_sql = '';
+
     $params = [
         ':current_user_id' => $user_id,
         ':friendship_user_id' => $user_id,
@@ -43,6 +44,7 @@ try {
             users.name,
 
             user_profiles.profile_picture_url,
+            user_profiles.bio,
 
             (
                 SELECT COUNT(*)
@@ -82,7 +84,7 @@ try {
     foreach ($params as $key => $value) {
 
         if ($key === ':limit' || $key === ':offset') {
-            $stmt->bindValue($key, (int)$value, PDO::PARAM_INT);
+            $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
         } else {
             $stmt->bindValue($key, $value);
         }

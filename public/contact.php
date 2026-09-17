@@ -135,8 +135,8 @@ body {
         </h1>
 
         <div class="contact-text">
-            Questions, feedback, partnership inquiries, or general comments are always welcome. 
-            Feel free to reach out directly and someone from Whusup will get back to you.
+            Have a question or concern? 
+            Feel free to email us and someone will get back with you. 
         </div>
 
         <div class="contact-button-row">

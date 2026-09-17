@@ -86,8 +86,7 @@ include '../includes/header.php';
                 $comments_by_post,
                 $post_images_by_post,
                 $user_id,
-                $is_logged_in,
-                $redirect_url
+                $is_logged_in
             ) ?>
         </div>
 

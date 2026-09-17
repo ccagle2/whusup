@@ -22,7 +22,11 @@ if (!in_array($feed_filter, ['all', 'following', 'my_posts'], true)) {
     $feed_filter = 'all';
 }
 
-function dashboardUrl($page_value = 'social_feed', $filter_value = null, $sort_value = null) {
+function dashboardUrl(
+    $page_value = 'social_feed',
+    $filter_value = null,
+    $sort_value = null
+) {
     $query = [
         'page' => $page_value
     ];
@@ -46,195 +50,470 @@ function dashboardUrl($page_value = 'social_feed', $filter_value = null, $sort_v
     max-width: 900px;
     margin: 24px auto 10px;
     padding: 0 20px;
-    text-align: center;
     box-sizing: border-box;
 }
 
 .dashboard-welcome {
+    margin-bottom: 16px;
+
+    color: #6b7280;
+
     font-family: "Poppins", sans-serif;
     font-size: 20px;
     font-weight: 600;
-    color: #6b7280;
+
+    text-align: center;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard controls
+|--------------------------------------------------------------------------
+*/
+
+.dashboard-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 24px;
+
+    width: 100%;
     margin-bottom: 14px;
 }
 
-.dashboard-button-scroll {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    padding-bottom: 8px;
-    margin-bottom: 12px;
-}
 
-.dashboard-button-scroll::-webkit-scrollbar {
-    height: 6px;
-}
+/*
+|--------------------------------------------------------------------------
+| Control groups
+|--------------------------------------------------------------------------
+*/
 
-.dashboard-button-scroll::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 999px;
-}
-
-.dashboard-button-scroll::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 999px;
-}
-
-.dashboard-button-row {
-    width: max-content;
-    min-width: 100%;
+.dashboard-control-group {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: nowrap;
-    box-sizing: border-box;
+    flex-direction: column;
+
+    gap: 7px;
 }
+
+.dashboard-control-label {
+    padding-left: 3px;
+
+    color: #9ca3af;
+
+    font-family: "Poppins", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Primary actions
+|--------------------------------------------------------------------------
+*/
+
+.dashboard-primary-actions {
+    display: flex;
+    align-items: center;
+
+    gap: 9px;
+}
+
+.dashboard-primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 40px;
+
+    padding: 9px 20px;
+
+    border-radius: 999px;
+
+    font-family: "Poppins", sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+
+    text-decoration: none;
+    white-space: nowrap;
+
+    box-sizing: border-box;
+
+    transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+
+/*
+ * Main content-creation action.
+ */
+.dashboard-post-button {
+    border: 1px solid #b91c1c;
+
+    background: #b91c1c;
+    color: #ffffff;
+
+    box-shadow:
+        0 4px 10px rgba(185, 28, 28, 0.16);
+}
+
+.dashboard-post-button:hover {
+    background: #991b1b;
+    border-color: #991b1b;
+    color: #ffffff;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 6px 14px rgba(185, 28, 28, 0.2);
+}
+
+
+/*
+ * Secondary navigation action.
+ */
+.dashboard-follow-button {
+    border: 1px solid #cbd5e1;
+
+    background: #ffffff;
+    color: #374151;
+}
+
+.dashboard-follow-button:hover {
+    background: #f8fafc;
+    border-color: #9ca3af;
+    color: #111827;
+
+    transform: translateY(-1px);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Feed filters
+|--------------------------------------------------------------------------
+*/
+
+.dashboard-filter-group {
+    align-items: center;
+}
+
+.dashboard-filter-group .dashboard-control-label {
+    width: 100%;
+    padding-left: 0;
+    text-align: center;
+}
+
+.dashboard-filter-buttons {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 3px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+
+    background: #f3f4f6;
+
+    box-shadow:
+        inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-filter-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 34px;
+
+    padding: 7px 16px;
+
+    border: 0;
+    border-radius: 999px;
+
+    background: transparent;
+    color: #6b7280;
+
+    font-family: "Poppins", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+
+    text-decoration: none;
+    white-space: nowrap;
+
+    transition:
+        background-color 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.dashboard-filter-button:hover {
+    color: #111827;
+}
+
+.dashboard-filter-button-active {
+    background: #111827;
+    color: #ffffff;
+
+    box-shadow:
+        0 2px 5px rgba(17, 24, 39, 0.18);
+}
+
+.dashboard-filter-button-active:hover {
+    background: #111827;
+    color: #ffffff;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Divider
+|--------------------------------------------------------------------------
+*/
 
 .dashboard-divider {
     width: 100%;
     height: 1px;
-    background: #e5e7eb;
+
+    margin: 0;
+
     border-radius: 999px;
-    margin-bottom: 0;
-}
 
-.dashboard-action-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    background: #f3f4f6;
-    color: #4b5563;
-    border: 1px solid #d1d5db;
-    padding: 9px 24px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: 0.2s ease;
-    text-align: center;
-    box-sizing: border-box;
-    white-space: nowrap;
-}
-
-.dashboard-action-button:hover {
     background: #e5e7eb;
-    color: #111827;
-    border-color: #cbd5e1;
 }
 
-.dashboard-action-button-active {
-    background: #111827;
-    color: #ffffff;
-    border-color: #111827;
+
+/*
+|--------------------------------------------------------------------------
+| Keyboard focus
+|--------------------------------------------------------------------------
+*/
+
+.dashboard-primary-button:focus-visible,
+.dashboard-filter-button:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.28);
+    outline-offset: 2px;
 }
 
-.dashboard-action-button-active:hover {
-    background: #374151;
-    color: #ffffff;
-    border-color: #374151;
-}
 
-.dashboard-post-button {
-    background: #fef2f2;
-    color: #850101;
-    border-color: #850101;
-}
-
-.dashboard-post-button:hover {
-    background: #fecaca;
-    color: #6b0000;
-    border-color: #6b0000;
-}
-
-.dashboard-follow-button {
-    background: #fffbeb;
-    color: #b45309;
-    border-color: #b45309;
-}
-
-.dashboard-follow-button:hover {
-    background: #fde68a;
-    color: #92400e;
-    border-color: #92400e;
-}
+/*
+|--------------------------------------------------------------------------
+| Mobile
+|--------------------------------------------------------------------------
+*/
 
 @media (max-width: 700px) {
 
     .dashboard-top {
         max-width: none;
         width: 100%;
+
         margin: 12px auto 8px;
         padding: 0 10px;
     }
 
-    .dashboard-button-row {
-        justify-content: flex-start;
-        gap: 8px;
-        padding: 0 2px;
+    .dashboard-welcome {
+        margin-bottom: 13px;
+
+        font-size: 18px;
     }
 
-    .dashboard-action-button {
-        padding: 9px 18px;
-        font-size: 13px;
+    .dashboard-controls {
+        display: block;
+
+        margin-bottom: 12px;
+    }
+
+    .dashboard-control-group {
+        width: 100%;
+    }
+
+    .dashboard-primary-actions {
+        width: 100%;
+    }
+
+    .dashboard-primary-button {
+        flex: 1 1 0;
+
+        min-width: 0;
+
+        padding: 9px 12px;
+    }
+
+    .dashboard-filter-group {
+        align-items: stretch;
+
+        margin-top: 14px;
+    }
+
+    .dashboard-filter-buttons {
+        display: flex;
+
+        width: 100%;
+
+        box-sizing: border-box;
+    }
+
+    .dashboard-filter-button {
+        flex: 1 1 0;
+
+        min-width: 0;
+
+        padding: 7px 8px;
+
+        font-size: 12.5px;
+    }
+
+    .dashboard-control-label {
+        padding-left: 2px;
     }
 
 }
 </style>
 
-<?php 
-if ($page === 'social_feed'): 
-$first_name = explode(' ', trim($_SESSION['user_name'] ?? 'User'))[0];
+<?php
+if ($page === 'social_feed'):
+
+    $first_name = explode(
+        ' ',
+        trim($_SESSION['user_name'] ?? 'User')
+    )[0];
 ?>
-    
+
     <div class="dashboard-top">
 
         <div class="dashboard-welcome">
             Welcome back <?= htmlspecialchars($first_name) ?>!
         </div>
 
-        <div class="dashboard-button-scroll" aria-label="Dashboard actions and filters">
-            <div class="dashboard-button-row">
+        <div class="dashboard-controls">
 
-                <a 
-                    href="<?= htmlspecialchars(dashboardUrl('post', $feed_filter, $sort)) ?>" 
-                    class="dashboard-action-button dashboard-post-button"
-                >
-                    Post
-                </a>
+            <!-- Primary navigation actions -->
+            <div class="dashboard-control-group">
 
-                <a 
-                    href="<?= htmlspecialchars(dashboardUrl('manage_friends', $feed_filter, $sort)) ?>" 
-                    class="dashboard-action-button dashboard-follow-button"
-                >
-                    Follow Friends
-                </a>
+                <div class="dashboard-primary-actions">
 
-                <a 
-                    href="<?= htmlspecialchars(dashboardUrl('social_feed', 'all', $sort)) ?>"
-                    class="dashboard-action-button <?= $feed_filter === 'all' ? 'dashboard-action-button-active' : '' ?>"
-                >
-                    All Posts
-                </a>
+                    <a
+                        href="<?= htmlspecialchars(
+                            dashboardUrl(
+                                'post',
+                                $feed_filter,
+                                $sort
+                            )
+                        ) ?>"
+                        class="dashboard-primary-button dashboard-post-button"
+                    >
+                        Post
+                    </a>
 
-                <a 
-                    href="<?= htmlspecialchars(dashboardUrl('social_feed', 'following', $sort)) ?>"
-                    class="dashboard-action-button <?= $feed_filter === 'following' ? 'dashboard-action-button-active' : '' ?>"
-                >
-                    Following
-                </a>
+                    <a
+                        href="<?= htmlspecialchars(
+                            dashboardUrl(
+                                'manage_friends',
+                                $feed_filter,
+                                $sort
+                            )
+                        ) ?>"
+                        class="dashboard-primary-button dashboard-follow-button"
+                    >
+                        Follow Friends
+                    </a>
 
-                <a 
-                    href="<?= htmlspecialchars(dashboardUrl('social_feed', 'my_posts', $sort)) ?>"
-                    class="dashboard-action-button <?= $feed_filter === 'my_posts' ? 'dashboard-action-button-active' : '' ?>"
-                >
-                    My Posts
-                </a>
+                </div>
 
             </div>
+
+
+            <!-- Feed filtering -->
+            <div class="dashboard-control-group dashboard-filter-group">
+
+                <div
+                    class="dashboard-filter-buttons"
+                    aria-label="Filter posts"
+                >
+
+                    <a
+                        href="<?= htmlspecialchars(
+                            dashboardUrl(
+                                'social_feed',
+                                'all',
+                                $sort
+                            )
+                        ) ?>"
+                        class="
+                            dashboard-filter-button
+                            <?= $feed_filter === 'all'
+                                ? 'dashboard-filter-button-active'
+                                : ''
+                            ?>
+                        "
+                        <?= $feed_filter === 'all'
+                            ? 'aria-current="page"'
+                            : ''
+                        ?>
+                    >
+                        All Posts
+                    </a>
+
+                    <a
+                        href="<?= htmlspecialchars(
+                            dashboardUrl(
+                                'social_feed',
+                                'following',
+                                $sort
+                            )
+                        ) ?>"
+                        class="
+                            dashboard-filter-button
+                            <?= $feed_filter === 'following'
+                                ? 'dashboard-filter-button-active'
+                                : ''
+                            ?>
+                        "
+                        <?= $feed_filter === 'following'
+                            ? 'aria-current="page"'
+                            : ''
+                        ?>
+                    >
+                        Following
+                    </a>
+
+                    <a
+                        href="<?= htmlspecialchars(
+                            dashboardUrl(
+                                'social_feed',
+                                'my_posts',
+                                $sort
+                            )
+                        ) ?>"
+                        class="
+                            dashboard-filter-button
+                            <?= $feed_filter === 'my_posts'
+                                ? 'dashboard-filter-button-active'
+                                : ''
+                            ?>
+                        "
+                        <?= $feed_filter === 'my_posts'
+                            ? 'aria-current="page"'
+                            : ''
+                        ?>
+                    >
+                        My Posts
+                    </a>
+
+                </div>
+
+            </div>
+
         </div>
 
         <div class="dashboard-divider"></div>

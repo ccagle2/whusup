@@ -102,7 +102,7 @@
 .recent-post-author {
     font-weight: bold;
     font-size: 18px;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
     color: #111827;
     padding-right: 76px;
 }
@@ -368,7 +368,7 @@
     justify-content: center;
     min-width: 80px;
     font-size: 14px;
-    color: #9ca3af;
+    color: #5C6670;
     font-weight: 700;
     text-align: center;
     white-space: nowrap;

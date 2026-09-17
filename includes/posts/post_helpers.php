@@ -119,9 +119,40 @@ if (!function_exists('currentPostsUrl')) {
 }
 
 if (!function_exists('redirectToPosts')) {
-    function redirectToPosts($url) {
-        echo '<script>window.location.href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '";</script>';
-        echo '<noscript><meta http-equiv="refresh" content="0;url=' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></noscript>';
+    function redirectToPosts(string $url): never
+    {
+        $url = trim($url);
+
+        // Only permit local site paths.
+        if (
+            $url === ''
+            || $url[0] !== '/'
+            || str_starts_with($url, '//')
+            || preg_match('/[\r\n]/', $url)
+        ) {
+            $url = '/dashboard.php?filter=all&sort=recent';
+        }
+
+        if (!headers_sent()) {
+            header('Location: ' . $url, true, 303);
+            exit;
+        }
+
+        // Emergency fallback if output was unexpectedly sent already.
+        $jsonUrl = json_encode(
+            $url,
+            JSON_HEX_TAG
+            | JSON_HEX_AMP
+            | JSON_HEX_APOS
+            | JSON_HEX_QUOT
+            | JSON_UNESCAPED_SLASHES
+        );
+
+        echo '<script>window.location.replace(' . $jsonUrl . ');</script>';
+        echo '<noscript><meta http-equiv="refresh" content="0;url='
+            . htmlspecialchars($url, ENT_QUOTES, 'UTF-8')
+            . '"></noscript>';
+
         exit;
     }
 }

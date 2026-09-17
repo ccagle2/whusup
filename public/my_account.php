@@ -8,6 +8,7 @@ require_once '../includes/s3_upload.php';
 
 $awsConfig = require __DIR__ . '/../config/aws.php';
 $s3 = $awsConfig['s3'];
+$ses = $awsConfig['ses'] ?? null;
 $rekognition = $awsConfig['rekognition'] ?? null;
 $s3Bucket = $awsConfig['bucket'];
 
@@ -17,6 +18,162 @@ include '../includes/navbar.php';
 $user_id = $_SESSION['user_id'];
 $message = "";
 $message_type = "";
+
+function fetchAccountData(PDO $pdo, $user_id): array {
+    $stmt = $pdo->prepare("
+        SELECT name, email, pending_email, email_verified
+        FROM users
+        WHERE id = :user_id
+        LIMIT 1
+    ");
+
+    $stmt->execute([
+        ':user_id' => $user_id
+    ]);
+
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+}
+
+function splitAccountName(string $fullName): array {
+    $fullName = trim(preg_replace('/\\s+/u', ' ', $fullName));
+
+    if ($fullName === '') {
+        return ['', ''];
+    }
+
+    $parts = preg_split('/\\s+/u', $fullName, 2);
+
+    return [
+        trim((string) ($parts[0] ?? '')),
+        trim((string) ($parts[1] ?? ''))
+    ];
+}
+
+function accountNamePartIsValid(string $value): bool {
+    $value = trim(preg_replace('/\\s+/u', ' ', $value));
+
+    if ($value === '') {
+        return false;
+    }
+
+    $length = function_exists('mb_strlen')
+        ? mb_strlen($value, 'UTF-8')
+        : strlen($value);
+
+    if ($length < 2 || $length > 100) {
+        return false;
+    }
+
+    if (!preg_match("/^[\\p{L}\\p{M}][\\p{L}\\p{M} .'’\\-]*$/u", $value)) {
+        return false;
+    }
+
+    preg_match_all('/\\p{L}/u', $value, $letters);
+
+    return count($letters[0]) >= 2;
+}
+
+function accountEmailIsDisposable(string $email): bool {
+    $blockedDomains = [
+        'mailinator.com',
+        '10minutemail.com',
+        'guerrillamail.com',
+        'tempmail.com',
+        'temp-mail.org',
+        'yopmail.com',
+        'trashmail.com',
+        'fakeinbox.com',
+        'getnada.com',
+        'dispostable.com',
+        'maildrop.cc'
+    ];
+
+    $atPosition = strrpos($email, '@');
+
+    if ($atPosition === false) {
+        return true;
+    }
+
+    $domain = strtolower(substr($email, $atPosition + 1));
+
+    return in_array($domain, $blockedDomains, true);
+}
+
+function accountEmailDomainHasMx(string $email): bool {
+    $atPosition = strrpos($email, '@');
+
+    if ($atPosition === false) {
+        return false;
+    }
+
+    $domain = substr($email, $atPosition + 1);
+
+    if ($domain === '') {
+        return false;
+    }
+
+    return checkdnsrr($domain, 'MX');
+}
+
+function sendEmailChangeVerificationEmail($ses, string $toEmail, string $name, string $verificationLink): void {
+    if (!$ses) {
+        throw new Exception('Email service is not configured.');
+    }
+
+    $fromEmail = 'noreply@whusup.com';
+    $fromName = 'Whusup';
+    $safeName = trim($name) !== '' ? trim($name) : 'there';
+
+    $subject = 'Verify your new Whusup email address';
+
+    $textBody = "Hi {$safeName},\n\n" .
+        "You requested to change the email address on your Whusup account. Please confirm the new address by opening this link:\n\n" .
+        $verificationLink . "\n\n" .
+        "This link expires in 24 hours. Your current email address will remain active until the new address is verified.\n\n" .
+        "If you did not request this change, you can ignore this email.";
+
+    $htmlBody = '
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827; max-width: 560px; margin: 0 auto; padding: 24px;">
+            <h2 style="margin: 0 0 12px;">Verify your new email address</h2>
+            <p>Hi ' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . ',</p>
+            <p>You requested to change the email address on your Whusup account. Please verify this new address to complete the change.</p>
+            <p style="margin: 24px 0;">
+                <a href="' . htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8') . '" style="background: #111827; color: #ffffff; padding: 12px 20px; border-radius: 999px; text-decoration: none; font-weight: 700; display: inline-block;">
+                    Verify New Email
+                </a>
+            </p>
+            <p>If the button does not work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all;">
+                <a href="' . htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($verificationLink, ENT_QUOTES, 'UTF-8') . '</a>
+            </p>
+            <p>This link expires in 24 hours. Your current email address will remain active until the new address is verified.</p>
+            <p style="color: #6b7280; font-size: 13px;">If you did not request this change, you can ignore this email.</p>
+        </div>
+    ';
+
+    $ses->sendEmail([
+        'Source' => $fromName . ' <' . $fromEmail . '>',
+        'Destination' => [
+            'ToAddresses' => [$toEmail]
+        ],
+        'Message' => [
+            'Subject' => [
+                'Data' => $subject,
+                'Charset' => 'UTF-8'
+            ],
+            'Body' => [
+                'Text' => [
+                    'Data' => $textBody,
+                    'Charset' => 'UTF-8'
+                ],
+                'Html' => [
+                    'Data' => $htmlBody,
+                    'Charset' => 'UTF-8'
+                ]
+            ]
+        ]
+    ]);
+}
 
 function redirect_to_dashboard() {
     if (!headers_sent()) {
@@ -220,14 +377,16 @@ function imagePassesModeration($rekognition, $bucket, $imageKey): bool {
 
 // Ensure profile row exists
 $stmt = $pdo->prepare("
-    INSERT IGNORE INTO user_profiles (user_id, display_name)
-    VALUES (:user_id, :display_name)
+    INSERT IGNORE INTO user_profiles (user_id, display_name, allow_email_notifications)
+    VALUES (:user_id, :display_name, 1)
 ");
 
 $stmt->execute([
     ':user_id' => $user_id,
     ':display_name' => $_SESSION['user_name'] ?? null
 ]);
+
+$account = fetchAccountData($pdo, $user_id);
 
 // Delete account
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account'])) {
@@ -299,12 +458,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account'])) {
 // Update profile
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
 
-    $phone = trim($_POST['phone'] ?? '');
-    $phone_digits = preg_replace('/\D/', '', $phone);
+    $firstName = trim(preg_replace('/\\s+/u', ' ', $_POST['first_name'] ?? ''));
+    $lastName = trim(preg_replace('/\\s+/u', ' ', $_POST['last_name'] ?? ''));
+    $fullName = trim($firstName . ' ' . $lastName);
 
-    if ($phone !== '' && strlen($phone_digits) !== 10) {
+    $displayName = trim(preg_replace('/\\s+/u', ' ', $_POST['display_name'] ?? ''));
+    $displayNameLength = function_exists('mb_strlen')
+        ? mb_strlen($displayName, 'UTF-8')
+        : strlen($displayName);
+
+    $bio = trim($_POST['bio'] ?? '');
+    $bio_length = function_exists('mb_strlen')
+        ? mb_strlen($bio, 'UTF-8')
+        : strlen($bio);
+
+    $websiteUrl = trim($_POST['website_url'] ?? '');
+    $location = trim(preg_replace('/\\s+/u', ' ', $_POST['location'] ?? ''));
+    $country = trim(preg_replace('/\\s+/u', ' ', $_POST['country'] ?? ''));
+    $jobTitle = trim(preg_replace('/\\s+/u', ' ', $_POST['job_title'] ?? ''));
+    $company = trim(preg_replace('/\\s+/u', ' ', $_POST['company'] ?? ''));
+    $school = trim(preg_replace('/\\s+/u', ' ', $_POST['school'] ?? ''));
+
+    $textLength = static function (string $value): int {
+        return function_exists('mb_strlen')
+            ? mb_strlen($value, 'UTF-8')
+            : strlen($value);
+    };
+
+    $phone = trim($_POST['phone'] ?? '');
+    $phone_digits = preg_replace('/\\D/', '', $phone);
+
+    $currentEmail = strtolower(trim($account['email'] ?? ''));
+    $requestedEmail = strtolower(trim($_POST['email'] ?? $currentEmail));
+    $emailChangeRequested = ($requestedEmail !== $currentEmail);
+
+    if (!accountNamePartIsValid($firstName)) {
+
+        $message = "Please enter a valid first name using letters and standard name punctuation.";
+        $message_type = "danger";
+
+    } elseif (!accountNamePartIsValid($lastName)) {
+
+        $message = "Please enter a valid last name using letters and standard name punctuation.";
+        $message_type = "danger";
+
+    } elseif ($displayName === '' || $displayNameLength > 100) {
+
+        $message = "Display Name is required and must be 100 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($bio_length > 500) {
+
+        $message = "Bio must be 500 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($websiteUrl) > 255) {
+
+        $message = "Website URL must be 255 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($websiteUrl !== '' && !filter_var($websiteUrl, FILTER_VALIDATE_URL)) {
+
+        $message = "Please enter a valid Website URL, including http:// or https://.";
+        $message_type = "danger";
+
+    } elseif ($textLength($location) > 150) {
+
+        $message = "City / State must be 150 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($country) > 100) {
+
+        $message = "Country must be 100 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($jobTitle) > 100) {
+
+        $message = "Job Title must be 100 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($company) > 100) {
+
+        $message = "Company must be 100 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($school) > 150) {
+
+        $message = "School must be 150 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($phone !== '' && strlen($phone_digits) !== 10) {
 
         $message = "Please enter a valid 10-digit phone number.";
+        $message_type = "danger";
+
+    } elseif ($requestedEmail === '' || strlen($requestedEmail) > 255 || !filter_var($requestedEmail, FILTER_VALIDATE_EMAIL)) {
+
+        $message = "Please enter a valid email address.";
+        $message_type = "danger";
+
+    } elseif ($emailChangeRequested && accountEmailIsDisposable($requestedEmail)) {
+
+        $message = "Please use a permanent email address.";
+        $message_type = "danger";
+
+    } elseif ($emailChangeRequested && !accountEmailDomainHasMx($requestedEmail)) {
+
+        $message = "Please enter a working email address.";
         $message_type = "danger";
 
     } else {
@@ -313,26 +573,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
             ? '(' . substr($phone_digits, 0, 3) . ') ' . substr($phone_digits, 3, 3) . '-' . substr($phone_digits, 6)
             : '';
 
+        $newProfileImageKey = null;
+        $existingProfileImageKey = null;
+
         try {
 
-            $profileImageKey = null;
-
-            $stmt = $pdo->prepare("
-                SELECT profile_picture_url
+            // Display names are public identities and must be unique.
+            // The database UNIQUE constraint remains the final protection against race conditions.
+            $displayNameCheckStmt = $pdo->prepare("
+                SELECT user_id
                 FROM user_profiles
-                WHERE user_id = :user_id
+                WHERE display_name = :display_name
+                  AND user_id <> :user_id
                 LIMIT 1
             ");
 
-            $stmt->execute([
+            $displayNameCheckStmt->execute([
+                ':display_name' => $displayName,
                 ':user_id' => $user_id
             ]);
 
-            $existingProfile = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($displayNameCheckStmt->fetch()) {
+                $message = "That display name is already in use. Please choose another one.";
+                $message_type = "danger";
+            }
 
-            $profileImageKey = $existingProfile['profile_picture_url'] ?? null;
+            if ($message === "" && $emailChangeRequested) {
+                $emailCheckStmt = $pdo->prepare("
+                    SELECT id
+                    FROM users
+                    WHERE LOWER(email) = :email
+                      AND id <> :user_id
+                    LIMIT 1
+                ");
 
-            if (!empty($_FILES['profile_picture']['name'])) {
+                $emailCheckStmt->execute([
+                    ':email' => $requestedEmail,
+                    ':user_id' => $user_id
+                ]);
+
+                if ($emailCheckStmt->fetch()) {
+                    $message = "An account with that email already exists.";
+                    $message_type = "danger";
+                }
+            }
+
+            if ($message === "") {
+                $stmt = $pdo->prepare("
+                    SELECT profile_picture_url
+                    FROM user_profiles
+                    WHERE user_id = :user_id
+                    LIMIT 1
+                ");
+
+                $stmt->execute([
+                    ':user_id' => $user_id
+                ]);
+
+                $existingProfile = $stmt->fetch(PDO::FETCH_ASSOC);
+                $existingProfileImageKey = $existingProfile['profile_picture_url'] ?? null;
+            }
+
+            if ($message === "" && !empty($_FILES['profile_picture']['name'])) {
 
                 $compressedImage = compress_profile_image($_FILES['profile_picture']);
 
@@ -367,24 +669,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
                                     'Key' => $newProfileImageKey
                                 ]);
 
+                                $newProfileImageKey = null;
                                 $message = "This profile picture cannot be uploaded because it may violate community guidelines.";
                                 $message_type = "danger";
-
-                            } else {
-
-                                if (!empty($profileImageKey)) {
-
-                                    try {
-                                        $s3->deleteObject([
-                                            'Bucket' => $s3Bucket,
-                                            'Key' => $profileImageKey
-                                        ]);
-                                    } catch (Exception $e) {
-                                        error_log('Old profile image delete failed: ' . $e->getMessage());
-                                    }
-                                }
-
-                                $profileImageKey = $newProfileImageKey;
                             }
 
                         } catch (Exception $e) {
@@ -398,6 +685,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
                                 error_log('Rejected profile image cleanup failed: ' . $deleteException->getMessage());
                             }
 
+                            $newProfileImageKey = null;
                             $message = "Image moderation failed. Please try again.";
                             $message_type = "danger";
                             error_log('Rekognition profile image moderation failed: ' . $e->getMessage());
@@ -408,59 +696,205 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
 
             if ($message === "") {
 
-                $stmt = $pdo->prepare("
-                    UPDATE user_profiles
-                    SET
-                        first_name = :first_name,
-                        last_name = :last_name,
-                        display_name = :display_name,
-                        bio = :bio,
-                        website_url = :website_url,
-                        phone = :phone,
-                        birthday = :birthday,
-                        job_title = :job_title,
-                        company = :company,
-                        school = :school,
-                        city = :city,
-                        location = :location,
-                        profile_picture_url = :profile_picture_url,
-                        is_private = :is_private,
-                        allow_email_notifications = :allow_email_notifications,
-                        allow_profile_search = :allow_profile_search
-                    WHERE user_id = :user_id
-                ");
+                $profileImageKey = $newProfileImageKey ?: $existingProfileImageKey;
 
-                $stmt->execute([
-                    ':first_name' => trim($_POST['first_name'] ?? ''),
-                    ':last_name' => trim($_POST['last_name'] ?? ''),
-                    ':display_name' => trim($_POST['display_name'] ?? ''),
-                    ':bio' => trim($_POST['bio'] ?? ''),
-                    ':website_url' => trim($_POST['website_url'] ?? ''),
-                    ':phone' => $phone_for_db,
-                    ':birthday' => !empty($_POST['birthday']) ? $_POST['birthday'] : null,
-                    ':job_title' => trim($_POST['job_title'] ?? ''),
-                    ':company' => trim($_POST['company'] ?? ''),
-                    ':school' => trim($_POST['school'] ?? ''),
-                    ':city' => trim($_POST['city'] ?? ''),
-                    ':location' => trim($_POST['location'] ?? ''),
-                    ':profile_picture_url' => $profileImageKey,
-                    ':is_private' => isset($_POST['is_private']) ? 1 : 0,
-                    ':allow_email_notifications' => isset($_POST['allow_email_notifications']) ? 1 : 0,
-                    ':allow_profile_search' => isset($_POST['allow_profile_search']) ? 1 : 0,
-                    ':user_id' => $user_id
-                ]);
+                try {
+                    $pdo->beginTransaction();
 
-                $message = "Profile updated successfully.";
-                $message_type = "success";
+                    // users.name is the authoritative full account/legal name.
+                    $userNameStmt = $pdo->prepare("
+                        UPDATE users
+                        SET name = :name
+                        WHERE id = :user_id
+                    ");
+
+                    $userNameStmt->execute([
+                        ':name' => $fullName,
+                        ':user_id' => $user_id
+                    ]);
+
+                    // Keep structured first/last values synchronized for future profile/account use.
+                    $profileStmt = $pdo->prepare("
+                        UPDATE user_profiles
+                        SET
+                            first_name = :first_name,
+                            last_name = :last_name,
+                            display_name = :display_name,
+                            bio = :bio,
+                            website_url = :website_url,
+                            phone = :phone,
+                            birthday = :birthday,
+                            job_title = :job_title,
+                            company = :company,
+                            school = :school,
+                            location = :location,
+                            country = :country,
+                            profile_picture_url = :profile_picture_url,
+                            is_private = :is_private,
+                            allow_email_notifications = :allow_email_notifications
+                        WHERE user_id = :user_id
+                    ");
+
+                    $profileStmt->execute([
+                        ':first_name' => $firstName,
+                        ':last_name' => $lastName,
+                        ':display_name' => $displayName,
+                        ':bio' => $bio,
+                        ':website_url' => $websiteUrl,
+                        ':phone' => $phone_for_db,
+                        ':birthday' => !empty($_POST['birthday']) ? $_POST['birthday'] : null,
+                        ':job_title' => $jobTitle,
+                        ':company' => $company,
+                        ':school' => $school,
+                        ':location' => $location,
+                        ':country' => $country,
+                        ':profile_picture_url' => $profileImageKey,
+                        ':is_private' => isset($_POST['is_private']) ? 1 : 0,
+                        ':allow_email_notifications' => isset($_POST['allow_email_notifications']) ? 1 : 0,
+                        ':user_id' => $user_id
+                    ]);
+
+                    if ($profileStmt->rowCount() === 0) {
+                        $profileExistsStmt = $pdo->prepare("
+                            SELECT 1
+                            FROM user_profiles
+                            WHERE user_id = :user_id
+                            LIMIT 1
+                        ");
+                        $profileExistsStmt->execute([':user_id' => $user_id]);
+
+                        if (!$profileExistsStmt->fetchColumn()) {
+                            throw new RuntimeException('Profile record is missing for this account.');
+                        }
+                    }
+
+                    if ($emailChangeRequested) {
+                        $rawToken = bin2hex(random_bytes(32));
+                        $tokenHash = hash('sha256', $rawToken);
+                        $expiresAt = date('Y-m-d H:i:s', time() + (24 * 60 * 60));
+                        $verificationLink = 'https://whusup.com/verify_email.php?token=' . urlencode($rawToken);
+
+                        $pendingStmt = $pdo->prepare("
+                            UPDATE users
+                            SET pending_email = :pending_email
+                            WHERE id = :user_id
+                        ");
+
+                        $pendingStmt->execute([
+                            ':pending_email' => $requestedEmail,
+                            ':user_id' => $user_id
+                        ]);
+
+                        $verificationStmt = $pdo->prepare("
+                            INSERT INTO email_verifications (
+                                user_id,
+                                token_hash,
+                                expires_at,
+                                verification_type
+                            )
+                            VALUES (
+                                :user_id,
+                                :token_hash,
+                                :expires_at,
+                                'email_change'
+                            )
+                            ON DUPLICATE KEY UPDATE
+                                token_hash = VALUES(token_hash),
+                                expires_at = VALUES(expires_at),
+                                verification_type = VALUES(verification_type),
+                                created_at = CURRENT_TIMESTAMP
+                        ");
+
+                        $verificationStmt->execute([
+                            ':user_id' => $user_id,
+                            ':token_hash' => $tokenHash,
+                            ':expires_at' => $expiresAt
+                        ]);
+
+                        sendEmailChangeVerificationEmail(
+                            $ses,
+                            $requestedEmail,
+                            $fullName,
+                            $verificationLink
+                        );
+                    }
+
+                    $pdo->commit();
+
+                    // Keep the session's account name synchronized with users.name.
+                    $_SESSION['user_name'] = $fullName;
+
+                    // Delete the old image only after the database successfully points to the new one.
+                    if ($newProfileImageKey && !empty($existingProfileImageKey)) {
+                        try {
+                            $s3->deleteObject([
+                                'Bucket' => $s3Bucket,
+                                'Key' => $existingProfileImageKey
+                            ]);
+                        } catch (Exception $e) {
+                            error_log('Old profile image delete failed: ' . $e->getMessage());
+                        }
+                    }
+
+                    if ($emailChangeRequested) {
+                        $message = "Profile updated successfully. We sent a verification link to your new email address. Your current email will remain active until the new address is verified.";
+                    } else {
+                        $message = "Profile updated successfully.";
+                    }
+
+                    $message_type = "success";
+
+                } catch (Throwable $updateException) {
+
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+
+                    if ($newProfileImageKey) {
+                        try {
+                            $s3->deleteObject([
+                                'Bucket' => $s3Bucket,
+                                'Key' => $newProfileImageKey
+                            ]);
+                        } catch (Exception $deleteException) {
+                            error_log('Failed profile image cleanup after database rollback: ' . $deleteException->getMessage());
+                        }
+                    }
+
+                    // MariaDB duplicate-key protection remains authoritative even if two users
+                    // attempt to claim the same display name at nearly the same moment.
+                    if ($updateException instanceof PDOException && $updateException->getCode() === '23000') {
+                        $message = "That display name is already in use. Please choose another one.";
+                    } else {
+                        $message = "Profile update failed. Please try again.";
+                        error_log('Profile update failed: ' . $updateException->getMessage());
+                    }
+
+                    $message_type = "danger";
+                }
             }
 
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
 
-            $message = "Profile update failed: " . $e->getMessage();
+            if ($newProfileImageKey) {
+                try {
+                    $s3->deleteObject([
+                        'Bucket' => $s3Bucket,
+                        'Key' => $newProfileImageKey
+                    ]);
+                } catch (Exception $deleteException) {
+                    error_log('Failed profile image cleanup after profile error: ' . $deleteException->getMessage());
+                }
+            }
+
+            $message = "Profile update failed. Please try again.";
             $message_type = "danger";
+            error_log('Profile update preparation failed: ' . $e->getMessage());
         }
     }
 }
+
+$account = fetchAccountData($pdo, $user_id);
 
 // Fetch profile
 $stmt = $pdo->prepare("
@@ -474,7 +908,15 @@ $stmt->execute([
     ':user_id' => $user_id
 ]);
 
-$profile = $stmt->fetch(PDO::FETCH_ASSOC);
+$profile = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$displayNameValue = trim((string) ($profile['display_name'] ?? ''));
+
+if ($displayNameValue === '') {
+    $displayNameValue = trim((string) ($account['name'] ?? ''));
+}
+
+[$firstNameValue, $lastNameValue] = splitAccountName((string) ($account['name'] ?? ''));
 
 $profileImageUrl = !empty($profile['profile_picture_url'])
     ? getProfileImageUrl($profile['profile_picture_url'])
@@ -486,7 +928,7 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
 .account-page {
     width: 100%;
     min-height: 100vh;
-    background: #f2f4f8;
+    background: #ffffff;
     padding: 30px 20px 50px;
     box-sizing: border-box;
 }
@@ -516,6 +958,35 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
     margin-bottom: 28px;
 }
 
+.account-section {
+    margin-top: 28px;
+}
+
+.account-section:first-of-type {
+    margin-top: 0;
+}
+
+.account-section-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.account-section-title {
+    margin: 0 0 5px;
+    color: #111827;
+    font-family: "Poppins", sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.account-section-note {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
 .account-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -538,6 +1009,17 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
     margin-bottom: 6px;
 }
 
+.account-field-helper {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #6b7280;
+}
+
+.account-field-helper strong {
+    color: #374151;
+}
+
 .account-field input,
 .account-field textarea {
     width: 100%;
@@ -553,22 +1035,26 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
     resize: vertical;
 }
 
+.bio-character-info {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+#bioCharacterCounter {
+    white-space: nowrap;
+    font-weight: 600;
+}
+
 .account-field input:focus,
 .account-field textarea:focus {
     border-color: #9ca3af;
     outline: none;
 }
 
-.coming-soon-box {
-    grid-column: 1 / -1;
-    background: #f3f4f6;
-    border: 1px dashed #cbd5e1;
-    border-radius: 14px;
-    padding: 18px;
-    color: #6b7280;
-    text-align: center;
-    font-weight: 700;
-}
 
 .account-options {
     grid-column: 1 / -1;
@@ -829,146 +1315,235 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
 
         <form method="POST" enctype="multipart/form-data">
 
-            <div class="account-grid">
+            <section class="account-section">
 
-            <div class="account-field full">
-            
-                <label>Profile Picture</label>
-            
-                <div class="profile-picture-section">
-            
-                    <?php if (!empty($profileImageUrl)): ?>
-            
-                        <img
-                            src="<?= htmlspecialchars($profileImageUrl) ?>"
-                            alt="Profile Picture"
-                            class="profile-picture-preview"
-                            id="profilePicturePreview"
-                        >
-            
-                    <?php else: ?>
-            
-                        <div class="profile-picture-placeholder" id="profilePicturePlaceholder">
-                            <?= strtoupper(substr($profile['display_name'] ?? 'U', 0, 1)) ?>
+                <div class="account-section-header">
+                    <h2 class="account-section-title">Public Information</h2>
+                    <p class="account-section-note">
+                        Information you add here may be shown with your profile and bio on Whusup.
+                        You can keep your bio and public information private using the privacy option below.
+                    </p>
+                </div>
+
+                <div class="account-grid">
+
+                    <div class="account-field full">
+
+                        <label>Profile Picture</label>
+
+                        <div class="profile-picture-section">
+
+                            <?php if (!empty($profileImageUrl)): ?>
+
+                                <img
+                                    src="<?= htmlspecialchars($profileImageUrl) ?>"
+                                    alt="Profile Picture"
+                                    class="profile-picture-preview"
+                                    id="profilePicturePreview"
+                                >
+
+                            <?php else: ?>
+
+                                <div class="profile-picture-placeholder" id="profilePicturePlaceholder">
+                                    <?= strtoupper(substr($displayNameValue !== '' ? $displayNameValue : 'U', 0, 1)) ?>
+                                </div>
+
+                                <img
+                                    src=""
+                                    alt="Profile Picture Preview"
+                                    class="profile-picture-preview profile-picture-preview-hidden"
+                                    id="profilePicturePreview"
+                                >
+
+                            <?php endif; ?>
+
+                            <div class="profile-picture-upload-area">
+
+                                <input
+                                    type="file"
+                                    name="profile_picture"
+                                    id="profilePictureInput"
+                                    accept="image/jpeg,image/png,image/webp"
+                                >
+
+                                <div class="profile-picture-helper">
+                                    JPG, PNG, or WEBP. Images are automatically optimized and scanned before being saved.
+                                </div>
+
+                            </div>
+
                         </div>
 
-                        <img
-                            src=""
-                            alt="Profile Picture Preview"
-                            class="profile-picture-preview profile-picture-preview-hidden"
-                            id="profilePicturePreview"
-                        >
-            
-                    <?php endif; ?>
-            
-                    <div class="profile-picture-upload-area">
-            
-                        <input
-                            type="file"
-                            name="profile_picture"
-                            accept="image/jpeg,image/png,image/webp"
-                        >
-            
-                        <div class="profile-picture-helper">
-                            JPG, PNG, or WEBP. Images are automatically optimized and scanned before being saved.
-                        </div>
-            
                     </div>
-            
+
+                    <div class="account-field full">
+                        <label>Display Name</label>
+                        <input
+                            type="text"
+                            name="display_name"
+                            maxlength="100"
+                            value="<?= htmlspecialchars($displayNameValue, ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field full">
+                        <label>Bio</label>
+                        <textarea name="bio" id="bioInput" maxlength="500"><?= htmlspecialchars($profile['bio'] ?? '') ?></textarea>
+                        <div class="bio-character-info">
+                            <span>Maximum 500 characters.</span>
+                            <span id="bioCharacterCounter">0 / 500</span>
+                        </div>
+                    </div>
+
+                    <div class="account-field">
+                        <label>Website URL</label>
+                        <input
+                            type="url"
+                            name="website_url"
+                            maxlength="255"
+                            placeholder="https://example.com"
+                            value="<?= htmlspecialchars($profile['website_url'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>City / State</label>
+                        <input
+                            type="text"
+                            name="location"
+                            maxlength="150"
+                            placeholder="San Jose, CA"
+                            value="<?= htmlspecialchars($profile['location'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>Country</label>
+                        <input
+                            type="text"
+                            name="country"
+                            maxlength="100"
+                            placeholder="United States"
+                            value="<?= htmlspecialchars($profile['country'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>Job Title</label>
+                        <input
+                            type="text"
+                            name="job_title"
+                            maxlength="100"
+                            value="<?= htmlspecialchars($profile['job_title'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>Company</label>
+                        <input
+                            type="text"
+                            name="company"
+                            maxlength="100"
+                            value="<?= htmlspecialchars($profile['company'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>School</label>
+                        <input
+                            type="text"
+                            name="school"
+                            maxlength="150"
+                            value="<?= htmlspecialchars($profile['school'] ?? '') ?>"
+                        >
+                    </div>
+
                 </div>
-            
-            </div>
 
-<div class="coming-soon-box">
-    Cover photo uploads coming soon.
-</div>
+            </section>
 
-                <div class="account-field">
-                    <label>First Name</label>
-                    <input type="text" name="first_name" value="<?= htmlspecialchars($profile['first_name'] ?? '') ?>">
+            <section class="account-section">
+
+                <div class="account-section-header">
+                    <h2 class="account-section-title">Private Details</h2>
+                    <p class="account-section-note">
+                        This information will never be displayed publicly on your Whusup profile.
+                        It is kept for account management and future account verification, security, or recovery features.
+                    </p>
                 </div>
 
-                <div class="account-field">
-                    <label>Last Name</label>
-                    <input type="text" name="last_name" value="<?= htmlspecialchars($profile['last_name'] ?? '') ?>">
+                <div class="account-grid">
+
+                    <div class="account-field">
+                        <label>First Name</label>
+                        <input type="text" name="first_name" value="<?= htmlspecialchars($firstNameValue, ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="account-field">
+                        <label>Last Name</label>
+                        <input type="text" name="last_name" value="<?= htmlspecialchars($lastNameValue, ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="account-field full">
+                        <label>Email</label>
+                        <input
+                            type="email"
+                            name="email"
+                            maxlength="255"
+                            autocomplete="email"
+                            value="<?= htmlspecialchars($account['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                            required
+                        >
+                        <div class="account-field-helper">
+                            Changing your email requires verification. Your current email remains active until the new address is verified.
+                            <?php if (!empty($account['pending_email'])): ?>
+                                <br><strong>Pending verification:</strong>
+                                <?= htmlspecialchars($account['pending_email'], ENT_QUOTES, 'UTF-8') ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="account-field">
+                        <label>Phone</label>
+                        <input
+                            type="tel"
+                            name="phone"
+                            id="phoneInput"
+                            maxlength="14"
+                            placeholder="(555) 555-5555"
+                            pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}"
+                            value="<?= htmlspecialchars($profile['phone'] ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>Birthday</label>
+                        <input type="date" name="birthday" value="<?= htmlspecialchars($profile['birthday'] ?? '') ?>">
+                    </div>
+
                 </div>
 
-                <div class="account-field full">
-                    <label>Display Name</label>
-                    <input type="text" name="display_name" value="<?= htmlspecialchars($profile['display_name'] ?? '') ?>">
-                </div>
+            </section>
 
-                <div class="account-field full">
-                    <label>Bio</label>
-                    <textarea name="bio"><?= htmlspecialchars($profile['bio'] ?? '') ?></textarea>
-                </div>
+            <div class="account-options">
 
-                <div class="account-field">
-                    <label>Website URL</label>
-                    <input type="url" name="website_url" value="<?= htmlspecialchars($profile['website_url'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>Phone</label>
+                <label class="account-checkbox">
                     <input
-                        type="tel"
-                        name="phone"
-                        id="phoneInput"
-                        maxlength="14"
-                        placeholder="(555) 555-5555"
-                        pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}"
-                        value="<?= htmlspecialchars($profile['phone'] ?? '') ?>"
+                        type="checkbox"
+                        name="is_private"
+                        <?= ((int) ($profile['is_private'] ?? 0) === 1) ? 'checked' : '' ?>
                     >
-                </div>
+                    Keep my bio and public information private
+                </label>
 
-                <div class="account-field">
-                    <label>Birthday</label>
-                    <input type="date" name="birthday" value="<?= htmlspecialchars($profile['birthday'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>Location</label>
-                    <input type="text" name="location" value="<?= htmlspecialchars($profile['location'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>Job Title</label>
-                    <input type="text" name="job_title" value="<?= htmlspecialchars($profile['job_title'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>Company</label>
-                    <input type="text" name="company" value="<?= htmlspecialchars($profile['company'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>School</label>
-                    <input type="text" name="school" value="<?= htmlspecialchars($profile['school'] ?? '') ?>">
-                </div>
-
-                <div class="account-field">
-                    <label>City</label>
-                    <input type="text" name="city" value="<?= htmlspecialchars($profile['city'] ?? '') ?>">
-                </div>
-
-                <div class="account-options">
-
-                    <label class="account-checkbox">
-                        <input type="checkbox" name="is_private" <?= !empty($profile['is_private']) ? 'checked' : '' ?>>
-                        Make my profile private
-                    </label>
-
-                    <label class="account-checkbox">
-                        <input type="checkbox" name="allow_email_notifications" <?= !empty($profile['allow_email_notifications']) ? 'checked' : '' ?>>
-                        Allow email notifications
-                    </label>
-
-                    <label class="account-checkbox">
-                        <input type="checkbox" name="allow_profile_search" <?= !empty($profile['allow_profile_search']) ? 'checked' : '' ?>>
-                        Allow my profile to appear in search
-                    </label>
-
-                </div>
+                <label class="account-checkbox">
+                    <input
+                        type="checkbox"
+                        name="allow_email_notifications"
+                        <?= ((int) ($profile['allow_email_notifications'] ?? 1) === 1) ? 'checked' : '' ?>
+                    >
+                    Allow email notifications
+                </label>
 
             </div>
 
@@ -1012,6 +1587,23 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const bioInput = document.getElementById("bioInput");
+    const bioCharacterCounter = document.getElementById("bioCharacterCounter");
+
+    function updateBioCharacterCounter() {
+        if (!bioInput || !bioCharacterCounter) {
+            return;
+        }
+
+        const characterCount = Array.from(bioInput.value).length;
+        bioCharacterCounter.textContent = characterCount + " / 500";
+    }
+
+    if (bioInput) {
+        updateBioCharacterCounter();
+        bioInput.addEventListener("input", updateBioCharacterCounter);
+    }
+
     const phoneInput = document.getElementById("phoneInput");
 
     if (phoneInput) {

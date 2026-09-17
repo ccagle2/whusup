@@ -110,10 +110,10 @@ body {
         </h1>
 
         <div class="about-text">
-            Your information is stored secured on Whusup's servers. 
-            Your email will never be displayed publicly nor will it ever be shared. 
-            Post information can be made public to only whusup verified users if it is recent or becomes popular - 
-            the goal of the site is to share what people are talking about and what is trending. 
+            Whusup is by nature a public facing social media site. The goal is to have helpful or interesting content 
+            that anyone can search and check out whether they are a user or not. 
+            If you do have an account, your password is stored encrypted and your email is never public nor will it ever 
+            be shared. We will also never sell or share any personal information. 
         </div>
 
         <div class="about-button-row">

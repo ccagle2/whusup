@@ -2,6 +2,49 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+/*
+ * Metadata defaults.
+ *
+ * Individual pages such as post.php can define these variables
+ * before including header.php.
+ */
+$pageTitle = $pageTitle ?? 'Social Media';
+
+$pageDescription = $pageDescription
+    ?? 'Join Whusup to share updates, connect with friends, discover trending discussions, and build your community.';
+
+$canonicalUrl = $canonicalUrl
+    ?? 'https://whusup.com';
+
+$robotsMeta = $robotsMeta
+    ?? 'index, follow';
+
+$ogTitle = $ogTitle ?? 'Whusup Social Media';
+
+$ogDescription = $ogDescription
+    ?? 'Connect with friends without ads or spam.';
+
+$ogImage = $ogImage
+    ?? 'https://whusup.com/assets/preview-image.jpg';
+
+$ogUrl = $ogUrl
+    ?? 'https://whusup.com';
+
+$ogType = $ogType
+    ?? 'website';
+
+$twitterCard = $twitterCard
+    ?? 'summary_large_image';
+
+$twitterTitle = $twitterTitle
+    ?? 'Whusup Social Media';
+
+$twitterDescription = $twitterDescription
+    ?? "Connect with friends and see what's happening.";
+
+$twitterImage = $twitterImage
+    ?? 'https://whusup.com/assets/preview-image.jpg';
 ?>
 
 <!doctype html>
@@ -20,11 +63,16 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <title>Social Media</title>
+    <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="description"
-      content="Join Whusup to share updates, connect with friends, discover trending discussions, and build your community.">
+      content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="keywords"
       content="social media, social network, community, friends, conversations, posts, Whusup">
+
+    <link rel="canonical"
+      href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="robots"
+      content="<?= htmlspecialchars($robotsMeta, ENT_QUOTES, 'UTF-8') ?>">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <!-- Include jQuery library from CDN -->
@@ -36,16 +84,16 @@ if (session_status() === PHP_SESSION_NONE) {
     rel="stylesheet"
     >
     
-    <meta property="og:title" content="Whusup Social Media">
-    <meta property="og:description" content="Connect with friends without ads or spam.">
-    <meta property="og:image" content="https://whusup.com/assets/preview-image.jpg">
-    <meta property="og:url" content="https://whusup.com">
-    <meta property="og:type" content="website">
+    <meta property="og:title" content="<?= htmlspecialchars($ogTitle, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($ogDescription, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($ogUrl, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:type" content="<?= htmlspecialchars($ogType, ENT_QUOTES, 'UTF-8') ?>">
     
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Whusup Social Media">
-    <meta name="twitter:description" content="Connect with friends and see what's happening.">
-    <meta name="twitter:image" content="https://whusup.com/assets/preview-image.jpg">
+    <meta name="twitter:card" content="<?= htmlspecialchars($twitterCard, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="twitter:title" content="<?= htmlspecialchars($twitterTitle, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="twitter:description" content="<?= htmlspecialchars($twitterDescription, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="twitter:image" content="<?= htmlspecialchars($twitterImage, ENT_QUOTES, 'UTF-8') ?>">
     
     <link rel="icon" type="image/png" href="/assets/favicon.png">
     <link rel="apple-touch-icon" href="/assets/favicon.png">
@@ -60,7 +108,7 @@ if (session_status() === PHP_SESSION_NONE) {
       "@type":"WebSite",
       "name":"Whusup",
       "url":"https://whusup.com",
-      "description":"Connect, share and discover local conversations.",
+      "description":"Connect, share and discover topics of interest.",
       "publisher":{
         "@type":"Organization",
         "name":"Whusup"
@@ -70,5 +118,3 @@ if (session_status() === PHP_SESSION_NONE) {
   </head>
  
 <body class="d-flex flex-column min-vh-100">
-
-

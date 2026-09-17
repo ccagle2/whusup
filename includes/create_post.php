@@ -35,20 +35,26 @@ try {
     $user_first_name = "";
 }
 
+/*
+ * Keep text moderation intentionally narrow.
+ *
+ * Ordinary language, mild profanity, and legitimate discussions about
+ * sensitive subjects are allowed. Only high-confidence spam phrases and
+ * commonly abused URL shorteners are blocked here.
+ */
 $blocked_words = [
-    'viagra', 'casino', 'porn', 'xxx', 'scam', 'hack',
-    'malware', 'phishing', 'crypto giveaway', 'free money'
+    'crypto giveaway',
+    'guaranteed profit',
+    'free money',
+    'claim your prize',
+    'double your money',
+    'risk free investment'
 ];
 
 $blocked_link_patterns = [
-    '/bit\.ly/i',
-    '/tinyurl\.com/i',
-    '/t\.co/i',
-    '/goo\.gl/i',
-    '/is\.gd/i',
-    '/free-money/i',
-    '/giveaway/i',
-    '/adult/i'
+    '/(?:https?:\/\/)?(?:www\.)?bit\.ly\//i',
+    '/(?:https?:\/\/)?(?:www\.)?tinyurl\.com\//i',
+    '/(?:https?:\/\/)?(?:www\.)?is\.gd\//i'
 ];
 
 function contains_blocked_content($text, $blocked_words, $blocked_link_patterns) {
@@ -332,6 +338,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $body = trim($_POST['post_body'] ?? '');
+
+    /*
+     * Normalize line endings so browser and server character counts agree.
+     * A line break is treated as one character.
+     */
+    $body = str_replace(["\r\n", "\r"], "\n", $body);
+
     $tag = trim($_POST['tag'] ?? '');
     $combinedContent = $body . ' ' . $tag;
     $uploadedImageKeys = [];
@@ -340,9 +353,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Keep the existing message from the duplicate/expired form-token check.
     } elseif ($body === '') {
         $message = "Post cannot be empty.";
-    } elseif (mb_strlen($body) > 500) {
-        $message = "Post cannot exceed 500 characters.";
-    } elseif (mb_strlen($tag) > 30) {
+    } elseif (mb_strlen($body, 'UTF-8') > 2000) {
+        $message = "Post cannot exceed 2,000 characters.";
+    } elseif (mb_strlen($tag, 'UTF-8') > 30) {
         $message = "Tag cannot exceed 30 characters.";
     } elseif (contains_blocked_content($combinedContent, $blocked_words, $blocked_link_patterns)) {
         $message = "Your post contains content or links that are not allowed.";
@@ -838,7 +851,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
         <div class="post-title">Create a Post</div>
 
         <div class="post-subtitle">
-            Share something in 500 characters or less. You can also add up to 3 optional photos.
+            Share something in 2,000 characters or less. You can also add up to 3 optional photos.
         </div>
 
         <?php if (!empty($message)): ?>
@@ -858,17 +871,17 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
                 name="post_body"
                 id="postBody"
                 class="post-textarea"
-                maxlength="600"
+                maxlength="2000"
                 placeholder="<?= htmlspecialchars($post_placeholder) ?>"
             ><?= htmlspecialchars($_POST['post_body'] ?? '') ?></textarea>
 
             <div class="character-row">
                 <span class="character-warning" id="characterWarning">
-                    Post is over 500 characters.
+                    Post is over 2,000 characters.
                 </span>
 
                 <span class="character-count" id="characterCount">
-                    0 / 500
+                    0 / 2000
                 </span>
             </div>
 
@@ -971,16 +984,27 @@ document.addEventListener("DOMContentLoaded", function () {
     const characterWarning = document.getElementById("characterWarning");
     const submitButton = document.getElementById("postSubmitButton");
 
-    function updateCharacterCount() {
-        const bodyLength = postBody.value.length;
-        const tagLength = tagInput.value.length;
+    function getPostCharacterCount(value) {
+        const normalizedValue = String(value ?? "")
+            .replace(/\r\n?/g, "\n");
 
-        characterCount.textContent = bodyLength + " / 500";
+        /*
+         * Array.from() counts Unicode code points rather than UTF-16 code
+         * units, which more closely matches PHP mb_strlen(..., 'UTF-8').
+         */
+        return Array.from(normalizedValue).length;
+    }
+
+    function updateCharacterCount() {
+        const bodyLength = getPostCharacterCount(postBody.value);
+        const tagLength = Array.from(tagInput.value).length;
+
+        characterCount.textContent = bodyLength + " / 2000";
         tagCharacterCount.textContent = tagLength + " / 30";
 
-        if (bodyLength > 500 || tagLength > 30) {
-            characterWarning.style.display = bodyLength > 500 ? "inline" : "none";
-            characterCount.style.color = bodyLength > 500 ? "#dc2626" : "#6b7280";
+        if (bodyLength > 2000 || tagLength > 30) {
+            characterWarning.style.display = bodyLength > 2000 ? "inline" : "none";
+            characterCount.style.color = bodyLength > 2000 ? "#dc2626" : "#6b7280";
             tagCharacterCount.style.color = tagLength > 30 ? "#dc2626" : "#6b7280";
             submitButton.disabled = true;
         } else {
@@ -1125,10 +1149,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (postForm) {
         postForm.addEventListener("submit", function (event) {
-            const bodyLength = postBody.value.trim().length;
-            const tagLength = tagInput.value.trim().length;
+            const trimmedBody = postBody.value.trim();
+            const trimmedTag = tagInput.value.trim();
 
-            if (bodyLength === 0 || bodyLength > 500 || tagLength > 30) {
+            const bodyLength = getPostCharacterCount(trimmedBody);
+            const tagLength = Array.from(trimmedTag).length;
+
+            if (bodyLength === 0 || bodyLength > 2000 || tagLength > 30) {
+                event.preventDefault();
                 updateCharacterCount();
                 return;
             }

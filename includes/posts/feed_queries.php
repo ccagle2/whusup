@@ -26,8 +26,8 @@ if ($feed_filter === 'my_posts' && $is_logged_in) {
 }
 
 if ($tag_search !== '') {
-    $where_parts[] = "posts.tag LIKE :tag_search";
-    $params[':tag_search'] = '%' . $tag_search . '%';
+    $where_parts[] = "LOWER(TRIM(posts.tag)) = LOWER(TRIM(:tag_search))";
+    $params[':tag_search'] = $tag_search;
 }
 
 $where_sql = "";
@@ -56,8 +56,12 @@ try {
             posts.tag,
             posts.image_key,
             posts.created_at,
+            COALESCE(posts.view_count, 0) AS view_count,
             users.name,
+
             user_profiles.profile_picture_url,
+            user_profiles.bio,
+            user_profiles.is_private,
 
             COUNT(DISTINCT post_likes.id) AS like_count,
             COUNT(DISTINCT post_comments.id) AS comment_count,
@@ -82,13 +86,17 @@ try {
 
         FROM posts
 
-        JOIN users ON users.id = posts.user_id
+        JOIN users
+            ON users.id = posts.user_id
 
-        LEFT JOIN user_profiles ON user_profiles.user_id = posts.user_id
+        LEFT JOIN user_profiles
+            ON user_profiles.user_id = posts.user_id
 
-        LEFT JOIN post_likes ON post_likes.post_id = posts.id
+        LEFT JOIN post_likes
+            ON post_likes.post_id = posts.id
 
-        LEFT JOIN post_comments ON post_comments.post_id = posts.id
+        LEFT JOIN post_comments
+            ON post_comments.post_id = posts.id
 
         $where_sql
 
@@ -99,8 +107,11 @@ try {
             posts.tag,
             posts.image_key,
             posts.created_at,
+            posts.view_count,
             users.name,
-            user_profiles.profile_picture_url
+            user_profiles.profile_picture_url,
+            user_profiles.bio,
+            user_profiles.is_private
 
         $order_sql
 
@@ -160,9 +171,11 @@ if (!empty($recent_posts)) {
                 ) AS user_liked
             FROM post_comments
 
-            JOIN users ON users.id = post_comments.user_id
+            JOIN users
+                ON users.id = post_comments.user_id
 
-            LEFT JOIN comment_likes ON comment_likes.comment_id = post_comments.id
+            LEFT JOIN comment_likes
+                ON comment_likes.comment_id = post_comments.id
 
             WHERE post_comments.post_id IN ($placeholders)
 
@@ -191,7 +204,6 @@ if (!empty($recent_posts)) {
         error_log('Could not load comments: ' . $e->getMessage());
     }
 }
-
 
 // FETCH POST IMAGES FOR THESE POSTS
 $post_images_by_post = [];
