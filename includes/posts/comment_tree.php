@@ -15,19 +15,70 @@ function renderCommentTree($comments, $parent_id, $post_id, $user_id, $is_logged
         $child_count = getDirectChildCount($comments, $comment_id);
         $comment_like_count = (int) ($comment['like_count'] ?? 0);
         $comment_user_liked = !empty($comment['user_liked']);
+
+        $commentAuthorName = trim((string) ($comment['name'] ?? 'User'));
+        if ($commentAuthorName === '') {
+            $commentAuthorName = 'User';
+        }
+
+        $nameParts = preg_split('/\s+/u', $commentAuthorName, -1, PREG_SPLIT_NO_EMPTY);
+        $firstInitial = '';
+        $lastInitial = '';
+
+        if (!empty($nameParts)) {
+            $firstNamePart = (string) $nameParts[0];
+            $lastNamePart = (string) $nameParts[count($nameParts) - 1];
+
+            $firstInitial = function_exists('mb_substr')
+                ? mb_strtoupper(mb_substr($firstNamePart, 0, 1, 'UTF-8'), 'UTF-8')
+                : strtoupper(substr($firstNamePart, 0, 1));
+
+            if (count($nameParts) > 1) {
+                $lastInitial = function_exists('mb_substr')
+                    ? mb_strtoupper(mb_substr($lastNamePart, 0, 1, 'UTF-8'), 'UTF-8')
+                    : strtoupper(substr($lastNamePart, 0, 1));
+            }
+        }
+
+        $commentInitials = $firstInitial . $lastInitial;
+        if ($commentInitials === '') {
+            $commentInitials = '?';
+        }
+
+        $commentProfileImageUrl = !empty($comment['profile_picture_url'])
+            ? getS3ImageUrl($comment['profile_picture_url'])
+            : null;
         ?>
 
-        <div 
-            class="comment-box <?= $is_reply ? 'comment-reply' : '' ?>" 
+        <div
+            class="comment-box <?= $is_reply ? 'comment-reply' : '' ?>"
             data-comment-id="<?= htmlspecialchars($comment_id) ?>"
             data-parent-comment-id="<?= htmlspecialchars($comment['parent_comment_id'] ?? '') ?>"
         >
-            <div class="comment-name">
-                <?= htmlspecialchars(ucwords($comment['name'])) ?>
-            </div>
+            <div class="comment-header">
+                <div class="comment-profile-emblem" aria-hidden="true">
+                    <?php if (!empty($commentProfileImageUrl)): ?>
+                        <img
+                            src="<?= htmlspecialchars($commentProfileImageUrl) ?>"
+                            alt=""
+                            class="comment-profile-emblem-image"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    <?php else: ?>
+                        <?= htmlspecialchars($commentInitials) ?>
+                    <?php endif; ?>
+                </div>
 
-            <div class="comment-date">
-                <?= htmlspecialchars(timeAgo($comment['created_at'])) ?>
+                <div class="comment-author-meta">
+                    <div class="comment-name">
+                        <?= htmlspecialchars($commentAuthorName) ?>
+                    </div>
+
+                    <div class="comment-date">
+                        <?= htmlspecialchars(timeAgo($comment['created_at'])) ?>
+                    </div>
+                </div>
             </div>
 
             <div class="comment-body">
@@ -60,16 +111,16 @@ function renderCommentTree($comments, $parent_id, $post_id, $user_id, $is_logged
                 <?php endif; ?>
 
                 <?php if ($is_comment_owner): ?>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         class="comment-action-link comment-edit-link edit-comment-toggle-button"
                         data-target="edit-comment-<?= htmlspecialchars($comment_id) ?>"
                     >
                         Edit
                     </button>
 
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         class="comment-action-link comment-delete-link ajax-delete-comment-button"
                         data-comment-id="<?= htmlspecialchars($comment_id) ?>"
                     >

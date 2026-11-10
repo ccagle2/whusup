@@ -18,6 +18,10 @@ $is_logged_in = !empty($user_id);
 
 $q = trim((string) ($_GET['q'] ?? ''));
 
+$search_clear_url = $is_logged_in
+    ? '/dashboard.php'
+    : '/';
+
 /*
 |--------------------------------------------------------------------------
 | Search safeguards
@@ -262,6 +266,56 @@ include '../includes/posts/post_styles.php';
 ?>
 
 <style>
+.whusup-search-field {
+    position: relative;
+    width: 100%;
+}
+
+.whusup-search-field .whusup-search-input {
+    width: 100%;
+    padding-left: 48px;
+    padding-right: 48px;
+}
+
+.whusup-search-clear {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: transparent;
+    color: #6b7280;
+
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1;
+
+    text-decoration: none;
+
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.whusup-search-clear:hover {
+    background: #f3f4f6;
+    color: #111827;
+    text-decoration: none;
+}
+
+.whusup-search-clear:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.28);
+    outline-offset: 1px;
+}
+
 .search-results-section {
     margin-bottom: 24px;
 }
@@ -453,19 +507,38 @@ include '../includes/posts/post_styles.php';
         class="whusup-search-form"
         role="search"
     >
-        <input
-            type="search"
-            name="q"
-            value="<?= htmlspecialchars($q) ?>"
-            placeholder="Find Anything"
-            aria-label="Search topics, people and posts"
-            class="whusup-search-input text-center"
-            minlength="<?= WHUSUP_SEARCH_MIN_LENGTH ?>"
-            maxlength="<?= WHUSUP_SEARCH_MAX_LENGTH ?>"
-            autocomplete="off"
-            enterkeyhint="search"
-            required
-        >
+        <div class="whusup-search-field">
+    
+            <input
+                type="search"
+                name="q"
+                value="<?= htmlspecialchars($q) ?>"
+                placeholder="Find Anything"
+                aria-label="Search topics, people and posts"
+                class="whusup-search-input text-center"
+                minlength="<?= WHUSUP_SEARCH_MIN_LENGTH ?>"
+                maxlength="<?= WHUSUP_SEARCH_MAX_LENGTH ?>"
+                autocomplete="off"
+                enterkeyhint="search"
+                required
+            >
+    
+            <?php if ($q !== ''): ?>
+                <a
+                    href="<?= htmlspecialchars(
+                        $search_clear_url,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                    class="whusup-search-clear"
+                    aria-label="Clear search and return to feed"
+                    title="Clear search"
+                >
+                    ×
+                </a>
+            <?php endif; ?>
+    
+        </div>
     </form>
 
     <?php if ($searchError !== ''): ?>
@@ -556,7 +629,7 @@ include '../includes/posts/post_styles.php';
                             <div class="people-result-details">
                                 <p class="people-result-name">
                                     <?= htmlspecialchars(
-                                        ucwords($personName)
+                                        $personName
                                     ) ?>
                                 </p>
 

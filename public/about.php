@@ -67,7 +67,9 @@ if (!function_exists('feedbackClientIp')) {
 $feedbackHashSalt = (string) ($env['FEEDBACK_HASH_SALT'] ?? '');
 
 if ($feedbackHashSalt === '') {
-    error_log('FEEDBACK_HASH_SALT is missing from the environment.');
+    error_log(
+        'FEEDBACK_HASH_SALT is missing from the environment.'
+    );
 }
 
 /*
@@ -77,7 +79,8 @@ if ($feedbackHashSalt === '') {
 */
 
 if (!empty($_SESSION['feedback_success_message'])) {
-    $feedbackSuccess = (string) $_SESSION['feedback_success_message'];
+    $feedbackSuccess =
+        (string) $_SESSION['feedback_success_message'];
 
     unset($_SESSION['feedback_success_message']);
 }
@@ -240,11 +243,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rateLimitStmt = $pdo->prepare("
                     SELECT COUNT(*)
                     FROM feedback_submissions
-                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-                      AND (
-                            ip_hash = :ip_hash
-                            OR session_hash = :session_hash
-                      )
+                    WHERE created_at >= DATE_SUB(
+                        NOW(),
+                        INTERVAL 1 HOUR
+                    )
+                    AND (
+                        ip_hash = :ip_hash
+                        OR session_hash = :session_hash
+                    )
                 ");
 
                 $rateLimitStmt->execute([
@@ -293,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     } else {
                         /*
-                         * Whusup user IDs are stored as BINARY(16).
+                         * Whusup user IDs are stored as UUID values.
                          */
                         $insertStmt->bindValue(
                             ':user_id',
@@ -441,91 +447,94 @@ body {
 .about-page {
     width: 100%;
     margin: 0;
-    padding: 34px 16px 44px;
-    background:
-        radial-gradient(
-            circle at top,
-            rgba(229, 231, 235, 0.7),
-            transparent 38%
-        ),
-        #f3f4f6;
+
+    padding: 42px 16px 48px;
+
+    background: #ffffff;
+
     box-sizing: border-box;
 }
 
 .about-container {
     width: 100%;
     max-width: 820px;
+
     margin: 0 auto;
 }
 
-.about-card,
-.feedback-card {
+/* =========================================================
+   About introduction
+   ========================================================= */
+
+.about-intro {
     width: 100%;
-    border: 1px solid #e5e7eb;
-    border-radius: 18px;
-    background: #ffffff;
-    box-shadow: 0 8px 26px rgba(17, 24, 39, 0.07);
-    box-sizing: border-box;
-}
 
-.about-card {
-    padding: 34px 38px;
+    margin: 0;
+    padding: 0;
+
     text-align: center;
-}
-
-.about-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: #f3f4f6;
-    color: #6b7280;
-    font-family: "Poppins", sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
 }
 
 .about-title {
     margin: 0 0 14px;
+
     color: #111827;
+
     font-family: "Poppins", sans-serif;
-    font-size: clamp(30px, 5vw, 42px);
+    font-size: clamp(32px, 5vw, 44px);
     font-weight: 800;
-    letter-spacing: -0.8px;
+
+    letter-spacing: -0.9px;
 }
 
-.about-text {
-    max-width: 680px;
+.about-lead {
+    max-width: 700px;
+
     margin: 0 auto;
+
     color: #4b5563;
+
     font-family: "Poppins", sans-serif;
-    font-size: 16px;
-    line-height: 1.75;
+    font-size: 17px;
+    line-height: 1.7;
 }
+
+/* =========================================================
+   Feedback
+   ========================================================= */
 
 .feedback-card {
-    margin-top: 18px;
+    width: 100%;
+
+    margin-top: 38px;
     padding: 28px 30px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+
+    background: #ffffff;
+
+    box-sizing: border-box;
 }
 
 .feedback-heading {
-    margin: 0 0 6px;
+    margin: 0 0 7px;
+
     color: #111827;
+
     font-family: "Poppins", sans-serif;
-    font-size: 21px;
-    font-weight: 750;
+    font-size: 22px;
+    font-weight: 800;
 }
 
 .feedback-intro {
-    margin: 0 0 18px;
+    margin: 0 0 20px;
+
     color: #6b7280;
+
     font-family: "Poppins", sans-serif;
     font-size: 14px;
-    line-height: 1.55;
+    line-height: 1.6;
 }
 
 .feedback-form {
@@ -534,19 +543,27 @@ body {
 
 .feedback-textarea {
     display: block;
+
     width: 100%;
-    min-height: 125px;
-    padding: 14px 15px;
+    min-height: 135px;
+
+    padding: 15px 16px;
+
     border: 1px solid #d1d5db;
     border-radius: 14px;
+
     background: #ffffff;
     color: #111827;
+
     font-family: "Poppins", sans-serif;
     font-size: 14px;
     line-height: 1.55;
+
     resize: vertical;
     outline: none;
+
     box-sizing: border-box;
+
     transition:
         border-color 0.2s ease,
         box-shadow 0.2s ease;
@@ -554,19 +571,24 @@ body {
 
 .feedback-textarea:focus {
     border-color: #6b7280;
-    box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.12);
+
+    box-shadow:
+        0 0 0 4px rgba(107, 114, 128, 0.12);
 }
 
 .feedback-form-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     gap: 14px;
+
     margin-top: 12px;
 }
 
 .feedback-character-count {
     color: #9ca3af;
+
     font-family: "Poppins", sans-serif;
     font-size: 12px;
     font-weight: 600;
@@ -582,14 +604,19 @@ body {
 
 .feedback-submit {
     padding: 9px 20px;
+
     border: 1px solid #111827;
     border-radius: 999px;
+
     background: #111827;
     color: #ffffff;
+
     font-family: "Poppins", sans-serif;
     font-size: 13px;
     font-weight: 700;
+
     cursor: pointer;
+
     transition:
         background 0.2s ease,
         transform 0.2s ease;
@@ -597,6 +624,7 @@ body {
 
 .feedback-submit:hover {
     background: #374151;
+
     transform: translateY(-1px);
 }
 
@@ -607,14 +635,18 @@ body {
 
 .feedback-submit:disabled {
     cursor: not-allowed;
+
     opacity: 0.55;
+
     transform: none;
 }
 
 .feedback-alert {
     margin-bottom: 16px;
     padding: 11px 13px;
+
     border-radius: 12px;
+
     font-family: "Poppins", sans-serif;
     font-size: 13px;
     line-height: 1.45;
@@ -622,31 +654,37 @@ body {
 
 .feedback-alert-success {
     border: 1px solid #bbf7d0;
+
     background: #f0fdf4;
     color: #166534;
 }
 
 .feedback-alert-error {
     border: 1px solid #fecaca;
+
     background: #fef2f2;
     color: #991b1b;
 }
 
-/*
- * Kept outside the visible viewport rather than using display:none so
- * simplistic bots are more likely to interact with it.
- */
 .feedback-honeypot {
     position: absolute;
+
     top: auto;
     left: -10000px;
+
     width: 1px;
     height: 1px;
+
     overflow: hidden;
 }
 
+/* =========================================================
+   Back link
+   ========================================================= */
+
 .about-button-row {
     margin-top: 18px;
+
     text-align: center;
 }
 
@@ -654,12 +692,17 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+
     padding: 7px 10px;
+
     color: #6b7280;
+
     font-family: "Poppins", sans-serif;
     font-size: 13px;
     font-weight: 650;
+
     text-decoration: none;
+
     transition: color 0.2s ease;
 }
 
@@ -669,19 +712,10 @@ body {
 
 .about-back-button:focus-visible {
     border-radius: 8px;
+
     outline: 3px solid rgba(17, 24, 39, 0.15);
     outline-offset: 2px;
 }
-
-/*
-|--------------------------------------------------------------------------
-| Footer-spacing correction
-|--------------------------------------------------------------------------
-|
-| Remove footer utility margins on this page so the gray area sits directly
-| against the footer.
-|
-*/
 
 .about-page ~ footer,
 .about-page ~ .footer-custom,
@@ -690,24 +724,26 @@ body > .footer-custom {
     margin-top: 0 !important;
 }
 
+/* =========================================================
+   Mobile
+   ========================================================= */
+
 @media (max-width: 700px) {
     .about-page {
-        padding: 24px 10px 32px;
+        padding: 30px 14px 34px;
     }
 
-    .about-card {
-        padding: 27px 20px;
-        border-radius: 15px;
+    .about-lead {
+        font-size: 15.5px;
+        line-height: 1.68;
     }
 
     .feedback-card {
-        padding: 23px 18px;
-        border-radius: 15px;
-    }
+        margin-top: 30px;
 
-    .about-text {
-        font-size: 15px;
-        line-height: 1.68;
+        padding: 22px 18px;
+
+        border-radius: 14px;
     }
 
     .feedback-form-footer {
@@ -719,41 +755,53 @@ body > .footer-custom {
 <main class="about-page">
     <div class="about-container">
 
-        <section class="about-card">
-            <div class="about-eyebrow">
-                Social media back to its roots
-            </div>
+        <section class="about-intro">
 
             <h1 class="about-title">
                 About Whusup
             </h1>
 
-            <p class="about-text">
-                Whusup is a social media site developed in the San Francisco
-                Bay Area beginning in 2026. We are not a corporation, and
-                there are no ads anywhere on the site. The content is driven
-                entirely by the community. You can create an account, follow
-                friends, and share content you find interesting or helpful.
-                Our primary rules are simple: no pornography, no violence,
-                and no threats. Everything else is free game and we highly promote 
-                freedom of speech. Let's let the community decide what is true vs. what isn't.
-                To start a topic or group discussion, add a
-                tag to your post. Tags are searchable and make it easy to
-                find related posts.
+            <p class="about-lead">
+                <p>
+                Doesn't whusup sound stupid?  Well we couldn't get whatsup.com so 
+                we had to settle for the next best thing :)
+                We created whusup as a completely ad free social media platform 
+                where you can share content and follow friends. 
+                While social media is widespread, most of it is run by giant coporations 
+                that pay employees millions of dollars for nothing more than to hook you to their site 
+                while spamming you with as much advertising as possible so their executives can own big houses and yachts. 
+                </p>
+                <p>
+                Whusup is a growing platform that was just started out of the San Francisco Bay Area in 2026. 
+                We are only funded by user support, but if we don't get a dime of support we will keep the platform 
+                going either way. 
+                </p>
+                <p>
+                We have no corporate oversight, there are absolutely no plans to ever incorporate advertising or paid 
+                promotions on the site, and the filters are simple so what you see is what you get. There are no gimmicks
+                or back end algorithms to hook you to the site. On top of this any personal data is secure and will never be 
+                shared. Post data is public as the site is meant to be a public facing site so keep that in mind.
+                </p>
+                <p>
+                If you like it, please use it and tell all your friends!
+                We are working hard to bring constant enhancements to this site for a better and better experience. 
+                </p>
             </p>
+
         </section>
 
         <section class="feedback-card">
+
             <h2 class="feedback-heading">
                 Share feedback
             </h2>
 
             <p class="feedback-intro">
-                Something is not working well? Tell us about it, and we will
-                try to fix or improve it.
+                Does something suck? Let us know. 
             </p>
 
             <?php if ($feedbackSuccess !== ''): ?>
+
                 <div
                     class="feedback-alert feedback-alert-success"
                     role="status"
@@ -764,9 +812,11 @@ body > .footer-custom {
                         'UTF-8'
                     ) ?>
                 </div>
+
             <?php endif; ?>
 
             <?php if ($feedbackError !== ''): ?>
+
                 <div
                     class="feedback-alert feedback-alert-error"
                     role="alert"
@@ -777,6 +827,7 @@ body > .footer-custom {
                         'UTF-8'
                     ) ?>
                 </div>
+
             <?php endif; ?>
 
             <form
@@ -784,11 +835,14 @@ body > .footer-custom {
                 action="/about.php"
                 class="feedback-form"
             >
+
                 <input
                     type="hidden"
                     name="csrf_token"
                     value="<?= htmlspecialchars(
-                        (string) $_SESSION['feedback_csrf_token'],
+                        (string) $_SESSION[
+                            'feedback_csrf_token'
+                        ],
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
@@ -798,7 +852,9 @@ body > .footer-custom {
                     type="hidden"
                     name="form_id"
                     value="<?= htmlspecialchars(
-                        (string) $_SESSION['feedback_form_id'],
+                        (string) $_SESSION[
+                            'feedback_form_id'
+                        ],
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>"
@@ -844,6 +900,7 @@ body > .footer-custom {
                 ) ?></textarea>
 
                 <div class="feedback-form-footer">
+
                     <span
                         id="feedbackCharacterCount"
                         class="feedback-character-count"
@@ -857,13 +914,17 @@ body > .footer-custom {
                         id="feedbackSubmit"
                         class="feedback-submit"
                     >
-                        Send feedback
+                        Send Feedback
                     </button>
+
                 </div>
+
             </form>
+
         </section>
 
         <div class="about-button-row">
+
             <a
                 href="<?= htmlspecialchars(
                     $returnUrl,
@@ -874,6 +935,7 @@ body > .footer-custom {
             >
                 ← Back
             </a>
+
         </div>
 
     </div>
@@ -881,22 +943,33 @@ body > .footer-custom {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const textarea = document.getElementById("feedbackText");
+    const textarea = document.getElementById(
+        "feedbackText"
+    );
+
     const characterCount = document.getElementById(
         "feedbackCharacterCount"
     );
+
     const submitButton = document.getElementById(
         "feedbackSubmit"
     );
 
-    if (!textarea || !characterCount || !submitButton) {
+    if (
+        !textarea
+        || !characterCount
+        || !submitButton
+    ) {
         return;
     }
 
     function updateCharacterCount() {
-        const count = Array.from(textarea.value).length;
+        const count = Array.from(
+            textarea.value
+        ).length;
 
-        characterCount.textContent = count + " / 500";
+        characterCount.textContent =
+            count + " / 500";
 
         characterCount.classList.toggle(
             "near-limit",

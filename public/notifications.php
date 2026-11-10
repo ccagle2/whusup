@@ -8,6 +8,7 @@ require_once '../config/database.php';
 $user_id = $_SESSION['user_id'];
 
 $total_posts = 0;
+$total_post_views = 0;
 $total_likes = 0;
 $total_comments = 0;
 $total_followers = 0;
@@ -16,6 +17,8 @@ $new_likes = 0;
 $new_comments = 0;
 $new_followers = 0;
 $new_notifications = 0;
+$new_comment_items = [];
+$new_comment_display_limit = 20;
 
 $last_like_date = null;
 $last_comment_date = null;
@@ -23,6 +26,22 @@ $last_follower_date = null;
 $last_read_at = null;
 
 $error_message = "";
+
+function format_compact_count($count) {
+    $count = max(0, (int) $count);
+
+    if ($count < 1000) {
+        return number_format($count);
+    }
+
+    if ($count < 1000000) {
+        $formatted = number_format($count / 1000, 1);
+        return rtrim(rtrim($formatted, '0'), '.') . 'k';
+    }
+
+    $formatted = number_format($count / 1000000, 1);
+    return rtrim(rtrim($formatted, '0'), '.') . 'M';
+}
 
 function time_ago($date) {
     if (empty($date)) {
@@ -37,17 +56,17 @@ function time_ago($date) {
     }
 
     if ($diff < 3600) {
-        $minutes = floor($diff / 60);
+        $minutes = (int) floor($diff / 60);
         return $minutes . " minute" . ($minutes !== 1 ? "s" : "") . " ago";
     }
 
     if ($diff < 86400) {
-        $hours = floor($diff / 3600);
+        $hours = (int) floor($diff / 3600);
         return $hours . " hour" . ($hours !== 1 ? "s" : "") . " ago";
     }
 
     if ($diff < 604800) {
-        $days = floor($diff / 86400);
+        $days = (int) floor($diff / 86400);
         return $days . " day" . ($days !== 1 ? "s" : "") . " ago";
     }
 
@@ -93,6 +112,22 @@ try {
     ]);
 
     $total_posts = (int) $stmt->fetchColumn();
+
+    /*
+        Total Post Views = lifetime views across all posts created by the logged-in user.
+        posts.view_count is the same counter used by the post cards.
+    */
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(view_count), 0)
+        FROM posts
+        WHERE user_id = :user_id
+    ");
+
+    $stmt->execute([
+        ':user_id' => $user_id
+    ]);
+
+    $total_post_views = (int) $stmt->fetchColumn();
 
     /*
         Total Likes = all likes from other users on the logged-in user's posts.
@@ -229,6 +264,38 @@ try {
     $new_notifications = $new_likes + $new_comments + $new_followers;
 
     /*
+        Fetch the individual unread comments for clickable activity entries.
+        Uses the SAME last_read_at boundary as the navbar badge.
+        The LIMIT applies only to displayed entries, not unread totals.
+    */
+    $stmt = $pdo->prepare("
+        SELECT
+            pc.id AS comment_id,
+            pc.post_id,
+            pc.created_at,
+            pc.comment_body,
+            p.title AS post_title,
+            p.body AS post_body,
+            commenter.display_name AS commenter_name
+        FROM post_comments pc
+        INNER JOIN posts p ON p.id = pc.post_id
+        LEFT JOIN user_profiles commenter ON commenter.user_id = pc.user_id
+        WHERE p.user_id = :post_owner
+          AND pc.user_id <> :comment_actor
+          AND pc.created_at > :previous_read_at
+        ORDER BY pc.created_at DESC, pc.id DESC
+        LIMIT 20
+    ");
+
+    $stmt->execute([
+        ':post_owner' => $user_id,
+        ':comment_actor' => $user_id,
+        ':previous_read_at' => $last_read_at
+    ]);
+
+    $new_comment_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    /*
         Mark notifications as read before rendering the navbar.
         This lets the bell count reset to zero after this page opens.
     */
@@ -255,7 +322,7 @@ include '../includes/navbar.php';
 .notifications-page {
     width: 100%;
     min-height: 100vh;
-    background: #f2f4f8;
+    background: #ffffff;
     padding: 30px 20px 50px;
     box-sizing: border-box;
 }
@@ -267,7 +334,7 @@ include '../includes/navbar.php';
     background: #ffffff;
     border-radius: 18px;
     padding: 34px;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+    box-shadow: none;
 }
 
 .notifications-title {
@@ -370,7 +437,7 @@ include '../includes/navbar.php';
 
 .notifications-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
     margin-bottom: 24px;
 }
@@ -497,6 +564,18 @@ include '../includes/navbar.php';
         text-align: center;
     }
 }
+
+/* Clickable new-comment activity, scoped to this page. */
+.notifications-comment-list { display: grid; gap: 0; margin: 0 0 22px; }
+.notifications-comment-item { display: block; text-decoration: none; color: inherit; background: #ffffff; border: none; border-bottom: 1px solid #e5e7eb; border-radius: 0; padding: 14px 4px; transition: background .18s ease; }
+.notifications-comment-item:hover, .notifications-comment-item:focus-visible { background: #f8fafc; color: inherit; }
+.notifications-comment-top { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
+.notifications-comment-person { font-size: 14px; font-weight: 700; color: #111827; }
+.notifications-comment-time { font-size: 12px; color: #64748b; }
+.notifications-comment-post { font-size: 14px; font-weight: 600; color: #334155; margin-top: 5px; overflow-wrap: anywhere; }
+.notifications-comment-preview { font-size: 13px; color: #64748b; margin-top: 5px; overflow-wrap: anywhere; }
+.notifications-comment-link { color: #2563eb; font-size: 13px; font-weight: 700; margin-top: 7px; }
+.notifications-comment-empty { color: #64748b; font-size: 14px; margin-bottom: 18px; }
 </style>
 
 <main class="notifications-page">
@@ -513,6 +592,47 @@ include '../includes/navbar.php';
             <div class="notifications-error">
                 <?= htmlspecialchars($error_message) ?>
             </div>
+        <?php endif; ?>
+
+        <div class="notifications-section-header">
+            <h2 class="notifications-section-title">New Comments on Your Posts</h2>
+            <span class="notifications-section-kicker">Since your last visit</span>
+        </div>
+
+        <?php if (empty($new_comment_items)): ?>
+            <p class="notifications-comment-empty">No new comments on your posts since your last visit.</p>
+        <?php else: ?>
+            <div class="notifications-comment-list">
+                <?php foreach ($new_comment_items as $item): ?>
+                    <?php
+                        $postTitle = trim((string) ($item['post_title'] ?? ''));
+                        if ($postTitle === '') {
+                            $postTitle = trim(preg_replace('/\s+/u', ' ', strip_tags((string) ($item['post_body'] ?? ''))));
+                            $postTitle = $postTitle === '' ? 'Your post' : (strlen($postTitle) > 90 ? substr($postTitle, 0, 90) . '…' : $postTitle);
+                        }
+                        $commentPreview = trim(preg_replace('/\s+/u', ' ', (string) ($item['comment_body'] ?? '')));
+                        if (strlen($commentPreview) > 130) {
+                            $commentPreview = substr($commentPreview, 0, 130) . '…';
+                        }
+                        $commenterName = trim((string) ($item['commenter_name'] ?? '')) ?: 'Someone';
+                        $postUrl = '/post.php?id=' . (int) $item['post_id'];
+                    ?>
+                    <a class="notifications-comment-item" href="<?= htmlspecialchars($postUrl, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="notifications-comment-top">
+                            <span class="notifications-comment-person"><?= htmlspecialchars($commenterName, ENT_QUOTES, 'UTF-8') ?> commented on your post</span>
+                            <span class="notifications-comment-time"><?= htmlspecialchars(time_ago($item['created_at']), ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                        <div class="notifications-comment-post"><?= htmlspecialchars($postTitle, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php if ($commentPreview !== ''): ?>
+                            <div class="notifications-comment-preview"><?= htmlspecialchars($commentPreview, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php endif; ?>
+                        <div class="notifications-comment-link">View post →</div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php if ($new_comments > count($new_comment_items)): ?>
+                <p class="notifications-section-description">Showing the latest <?= count($new_comment_items) ?> of <?= (int) $new_comments ?> new comments.</p>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="notifications-section-header">
@@ -570,28 +690,35 @@ include '../includes/navbar.php';
 
             <div class="notification-stat">
                 <div class="notification-number">
-                    <?= htmlspecialchars((string) $total_posts) ?>
+                    <?= htmlspecialchars(number_format($total_posts)) ?>
                 </div>
                 <div class="notification-label">Total Posts</div>
             </div>
 
             <div class="notification-stat">
                 <div class="notification-number">
-                    <?= htmlspecialchars((string) $total_likes) ?>
+                    <?= htmlspecialchars(format_compact_count($total_post_views)) ?>
+                </div>
+                <div class="notification-label">Post Views</div>
+            </div>
+
+            <div class="notification-stat">
+                <div class="notification-number">
+                    <?= htmlspecialchars(number_format($total_likes)) ?>
                 </div>
                 <div class="notification-label">Likes</div>
             </div>
 
             <div class="notification-stat">
                 <div class="notification-number">
-                    <?= htmlspecialchars((string) $total_comments) ?>
+                    <?= htmlspecialchars(number_format($total_comments)) ?>
                 </div>
                 <div class="notification-label">Comments</div>
             </div>
 
             <div class="notification-stat">
                 <div class="notification-number">
-                    <?= htmlspecialchars((string) $total_followers) ?>
+                    <?= htmlspecialchars(number_format($total_followers)) ?>
                 </div>
                 <div class="notification-label">Followers</div>
             </div>

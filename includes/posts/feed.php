@@ -79,7 +79,7 @@ try {
             post_count DESC,
             latest_post_date DESC,
             tag ASC
-        LIMIT 10
+        LIMIT 15
     ");
 
     $trending_tags = $trendingStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -373,7 +373,7 @@ include __DIR__ . '/post_styles.php';
                 aria-expanded="false"
                 aria-controls="trendingTagMenu"
             >
-                Trending
+                Tags
             </a>
 
             <div

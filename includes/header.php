@@ -27,6 +27,9 @@ $ogDescription = $ogDescription
 
 $ogImage = $ogImage
     ?? 'https://whusup.com/assets/preview-image.jpg';
+    
+$ogImageAlt = $ogImageAlt
+    ?? 'Whusup social media preview';
 
 $ogUrl = $ogUrl
     ?? 'https://whusup.com';
@@ -66,8 +69,6 @@ $twitterImage = $twitterImage
     <title><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="description"
       content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>">
-    <meta name="keywords"
-      content="social media, social network, community, friends, conversations, posts, Whusup">
 
     <link rel="canonical"
       href="<?= htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8') ?>">
@@ -87,6 +88,7 @@ $twitterImage = $twitterImage
     <meta property="og:title" content="<?= htmlspecialchars($ogTitle, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:description" content="<?= htmlspecialchars($ogDescription, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta property="og:image:alt" content="<?= htmlspecialchars($ogImageAlt, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:url" content="<?= htmlspecialchars($ogUrl, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:type" content="<?= htmlspecialchars($ogType, ENT_QUOTES, 'UTF-8') ?>">
     
@@ -94,6 +96,7 @@ $twitterImage = $twitterImage
     <meta name="twitter:title" content="<?= htmlspecialchars($twitterTitle, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="twitter:description" content="<?= htmlspecialchars($twitterDescription, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="twitter:image" content="<?= htmlspecialchars($twitterImage, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="twitter:image:alt" content="<?= htmlspecialchars($ogImageAlt, ENT_QUOTES, 'UTF-8') ?>">
     
     <link rel="icon" type="image/png" href="/assets/favicon.png">
     <link rel="apple-touch-icon" href="/assets/favicon.png">

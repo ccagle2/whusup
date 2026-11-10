@@ -539,11 +539,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const postCard = form.closest(".recent-post-card");
             const postId = form.querySelector('input[name="post_id"]').value;
+            const titleInput = form.querySelector('input[name="title"]');
             const textarea = form.querySelector('textarea[name="post_body"]');
+            const postTitle = titleInput ? titleInput.value.trim() : "";
             const postBody = textarea.value.trim();
+
+            if (Array.from(postTitle).length > 200) {
+                alert("Title cannot exceed 200 characters.");
+                return;
+            }
 
             if (postBody === "") {
                 alert("Post cannot be empty.");
+                return;
+            }
+
+            if (Array.from(postBody).length > 2000) {
+                alert("Post cannot exceed 2000 characters.");
                 return;
             }
 
@@ -554,6 +566,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 },
                 body:
                     "post_id=" + encodeURIComponent(postId) +
+                    "&title=" + encodeURIComponent(postTitle) +
                     "&post_body=" + encodeURIComponent(postBody)
             })
             .then(response => response.json())
@@ -563,9 +576,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
+                const postTitleDiv = postCard.querySelector(".recent-post-title");
                 const postBodyDiv = postCard.querySelector(".recent-post-body");
                 const editSection = form.closest(".edit-post-section");
                 const editButton = postCard.querySelector(".edit-toggle-button");
+
+                if (postTitleDiv) {
+                    postTitleDiv.textContent = postTitle;
+                    postTitleDiv.classList.toggle("is-empty", postTitle === "");
+                }
 
                 postBodyDiv.innerHTML = linkifyEscapedText(postBody);
                 editSection.classList.remove("open");
@@ -691,11 +710,21 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    function createCommentBoxHtml(commentId, postId, parentCommentId, commentBody, name) {
-        return `
-            <div class="comment-name">${escapeHtml(name)}</div>
+    function createCommentBoxHtml(commentId, postId, parentCommentId, commentBody, name, profileImageUrl) {
+        const nameParts = String(name || "User").trim().split(/\s+/).filter(Boolean);
+        const initials = ((nameParts[0] || "U").charAt(0) + (nameParts.length > 1 ? nameParts[nameParts.length - 1].charAt(0) : "")).toUpperCase();
+        const avatar = profileImageUrl
+            ? `<img class="comment-avatar-image" src="${escapeHtml(profileImageUrl)}" alt="" loading="lazy" decoding="async" width="40" height="40">`
+            : escapeHtml(initials);
 
-            <div class="comment-date">Just now</div>
+        return `
+            <div class="comment-header">
+                <div class="comment-avatar" aria-hidden="true">${avatar}</div>
+                <div class="comment-author-meta">
+                    <div class="comment-name">${escapeHtml(name)}</div>
+                    <div class="comment-date">Just now</div>
+                </div>
+            </div>
 
             <div class="comment-body">${linkifyEscapedText(commentBody)}</div>
 
@@ -823,7 +852,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 commentBox.className = isReply ? "comment-box comment-reply" : "comment-box";
                 commentBox.dataset.commentId = commentId;
                 commentBox.dataset.parentCommentId = parentCommentId;
-                commentBox.innerHTML = createCommentBoxHtml(commentId, postId, parentCommentId, commentBody, data.name || "You");
+                commentBox.innerHTML = createCommentBoxHtml(commentId, postId, parentCommentId, commentBody, data.name || "You", data.profile_image_url || null);
 
                 if (isReply && parentCommentBox) {
                     const children = ensureReplyContainer(parentCommentBox);
@@ -919,7 +948,42 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     document.querySelectorAll(".comment-icon-toggle").forEach(attachCommentIconToggle);
-
+    
+    
+    /*
+     * Format large counts for compact display.
+     *
+     * Examples:
+     * 999     -> 999
+     * 1000    -> 1k
+     * 1500    -> 1.5k
+     * 12850   -> 12.9k
+     * 1250000 -> 1.3M
+     */
+    function formatCompactNumber(number) {
+        const numericValue = Math.max(
+            0,
+            Number.parseInt(number, 10) || 0
+        );
+    
+        if (numericValue >= 1000000) {
+            const formatted =
+                Math.round((numericValue / 1000000) * 10) / 10;
+    
+            return formatted.toString() + "M";
+        }
+    
+        if (numericValue >= 1000) {
+            const formatted =
+                Math.round((numericValue / 1000) * 10) / 10;
+    
+            return formatted.toString() + "k";
+        }
+    
+        return numericValue.toLocaleString();
+    }
+    
+    
     /*
      * Record a view only after at least 50% of a post card has remained
      * visible for two continuous seconds.
@@ -1008,6 +1072,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             if (Number.isFinite(numericCount)) {
                                 const formattedCount =
+                                    formatCompactNumber(numericCount);
+                                
+                                const exactFormattedCount =
                                     numericCount.toLocaleString();
 
                                 const countElement = postCard.querySelector(
@@ -1024,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                 if (indicator) {
                                     const viewLabel =
-                                        formattedCount
+                                        exactFormattedCount
                                         + (numericCount === 1
                                             ? " view"
                                             : " views");

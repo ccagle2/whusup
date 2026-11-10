@@ -337,6 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         unset($_SESSION['post_form_token']);
     }
 
+    $title = trim($_POST['title'] ?? '');
     $body = trim($_POST['post_body'] ?? '');
 
     /*
@@ -346,11 +347,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $body = str_replace(["\r\n", "\r"], "\n", $body);
 
     $tag = trim($_POST['tag'] ?? '');
-    $combinedContent = $body . ' ' . $tag;
+    $combinedContent = $title . ' ' . $body . ' ' . $tag;
     $uploadedImageKeys = [];
 
     if ($message !== '') {
         // Keep the existing message from the duplicate/expired form-token check.
+    } elseif (mb_strlen($title, 'UTF-8') > 200) {
+        $message = "Title cannot exceed 200 characters.";
     } elseif ($body === '') {
         $message = "Post cannot be empty.";
     } elseif (mb_strlen($body, 'UTF-8') > 2000) {
@@ -360,6 +363,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (contains_blocked_content($combinedContent, $blocked_words, $blocked_link_patterns)) {
         $message = "Your post contains content or links that are not allowed.";
     } else {
+
+        /*
+         * Fast pre-check before image compression/upload/moderation.
+         *
+         * The authoritative check is repeated inside the database transaction
+         * immediately before the post is inserted. This early check simply avoids
+         * unnecessary S3/Rekognition work when the user is already at the limit.
+         */
+        try {
+            $postLimitStmt = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM post_creation_log
+                WHERE user_id = :user_id
+                  AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            ");
+            $postLimitStmt->execute([':user_id' => $user_id]);
+
+            if ((int) $postLimitStmt->fetchColumn() >= 5) {
+                $nextPostStmt = $pdo->prepare("
+                    SELECT DATE_ADD(MIN(created_at), INTERVAL 24 HOUR)
+                    FROM post_creation_log
+                    WHERE user_id = :user_id
+                      AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                ");
+                $nextPostStmt->execute([':user_id' => $user_id]);
+                $nextPostAt = $nextPostStmt->fetchColumn();
+
+                $message = "You've reached the limit of 5 posts in a 24-hour period.";
+
+                if (!empty($nextPostAt)) {
+                    $message .= " You can post again after " .
+                        date('M j, g:i A', strtotime($nextPostAt)) . ".";
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('Post limit pre-check failed: ' . $e->getMessage());
+            $message = "Post failed. Please try again.";
+        }
 
         $postImages = $_FILES['post_images'] ?? null;
         $selectedImages = [];
@@ -434,11 +475,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                $primaryImageKey = $uploadedImageKeys[0] ?? null;
+                /*
+                 * Serialize post creation for this user. Two simultaneous requests
+                 * from the same account cannot both pass the five-post check.
+                 */
+                $userLockStmt = $pdo->prepare("
+                    SELECT id
+                    FROM users
+                    WHERE id = :user_id
+                    FOR UPDATE
+                ");
+                $userLockStmt->execute([':user_id' => $user_id]);
 
-                $stmt = $pdo->prepare("
+                if (!$userLockStmt->fetchColumn()) {
+                    throw new PDOException('Unable to lock user for post creation.');
+                }
+
+                /*
+                 * Authoritative rolling 24-hour limit. We count permanent creation
+                 * events rather than current rows in posts, so deleting a post does
+                 * not restore a posting slot.
+                 */
+                $postLimitStmt = $pdo->prepare("
+                    SELECT COUNT(*)
+                    FROM post_creation_log
+                    WHERE user_id = :user_id
+                      AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                ");
+                $postLimitStmt->execute([':user_id' => $user_id]);
+
+                if ((int) $postLimitStmt->fetchColumn() >= 5) {
+                    $nextPostStmt = $pdo->prepare("
+                        SELECT DATE_ADD(MIN(created_at), INTERVAL 24 HOUR)
+                        FROM post_creation_log
+                        WHERE user_id = :user_id
+                          AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                    ");
+                    $nextPostStmt->execute([':user_id' => $user_id]);
+                    $nextPostAt = $nextPostStmt->fetchColumn();
+
+                    $pdo->rollBack();
+
+                    foreach ($uploadedImageKeys as $cleanupImageKey) {
+                        delete_s3_object_if_exists($s3, $s3Bucket, $cleanupImageKey);
+                    }
+                    $uploadedImageKeys = [];
+
+                    $message = "You've reached the limit of 5 posts in a 24-hour period.";
+
+                    if (!empty($nextPostAt)) {
+                        $message .= " You can post again after " .
+                            date('M j, g:i A', strtotime($nextPostAt)) . ".";
+                    }
+                } else {
+                    $primaryImageKey = $uploadedImageKeys[0] ?? null;
+
+                    $stmt = $pdo->prepare("
                     INSERT INTO posts (
                         user_id,
+                        title,
                         tag,
                         body,
                         image_key,
@@ -446,6 +541,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     )
                     VALUES (
                         :user_id,
+                        :title,
                         :tag,
                         :body,
                         :image_key,
@@ -455,6 +551,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt->execute([
                     ':user_id' => $user_id,
+                    ':title' => $title !== '' ? $title : null,
                     ':tag' => $tag !== '' ? $tag : null,
                     ':body' => $body,
                     ':image_key' => $primaryImageKey
@@ -487,7 +584,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $pdo->commit();
+                    /*
+                     * Record the successful creation in the same transaction as the
+                     * post itself. This row remains even if the post is later deleted.
+                     */
+                    $creationLogStmt = $pdo->prepare("
+                        INSERT INTO post_creation_log (user_id, created_at)
+                        VALUES (:user_id, NOW())
+                    ");
+                    $creationLogStmt->execute([':user_id' => $user_id]);
+
+                    $pdo->commit();
 
                 if (!headers_sent()) {
                     header("Location: /dashboard.php");
@@ -496,6 +603,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 echo "<script>window.location.href = '/dashboard.php';</script>";
                 exit;
+                }
 
             } catch (PDOException $e) {
                 if ($pdo->inTransaction()) {
@@ -570,24 +678,30 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
 }
 
 .post-textarea:focus,
+.post-title-input:focus,
 .post-tag-input:focus {
     border-color: #374151;
 }
 
+.post-title-wrapper,
+.post-body-wrapper,
 .post-tag-wrapper,
 .post-image-wrapper {
     margin-top: 18px;
 }
 
+.post-title-label,
+.post-body-label,
 .post-tag-label,
 .post-image-label {
     display: block;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
     color: #4b5563;
     margin-bottom: 6px;
 }
 
+.post-title-input,
 .post-tag-input {
     width: 100%;
     padding: 12px 14px;
@@ -842,6 +956,13 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
         height: 24px;
         font-size: 16px;
     }
+    
+    .post-title-label,
+    .post-body-label,
+    .post-tag-label,
+    .post-image-label {
+        font-size: 16px;
+    }
 }
 </style>
 
@@ -849,10 +970,6 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
     <div class="post-card">
 
         <div class="post-title">Create a Post</div>
-
-        <div class="post-subtitle">
-            Share something in 2,000 characters or less. You can also add up to 3 optional photos.
-        </div>
 
         <?php if (!empty($message)): ?>
             <div class="post-error">
@@ -867,13 +984,31 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
                 value="<?= htmlspecialchars($post_form_token) ?>"
             >
 
-            <textarea
-                name="post_body"
-                id="postBody"
-                class="post-textarea"
-                maxlength="2000"
-                placeholder="<?= htmlspecialchars($post_placeholder) ?>"
-            ><?= htmlspecialchars($_POST['post_body'] ?? '') ?></textarea>
+            <div class="post-title-wrapper">
+                <label class="post-title-label" for="postTitle">Title <span style="font-weight: 500; color: #9ca3af;">(optional)</span></label>
+
+                <input
+                    type="text"
+                    name="title"
+                    id="postTitle"
+                    class="post-title-input"
+                    maxlength="200"
+                    placeholder="Add a title or question"
+                    value="<?= htmlspecialchars($_POST['title'] ?? '') ?>"
+                >
+            </div>
+
+            <div class="post-body-wrapper">
+                <label class="post-body-label" for="postBody">Body <span style="font-weight: 500; color: #9ca3af;">(required)</span></label>
+
+                <textarea
+                    name="post_body"
+                    id="postBody"
+                    class="post-textarea"
+                    maxlength="2000"
+                    placeholder="<?= htmlspecialchars($post_placeholder) ?>"
+                ><?= htmlspecialchars($_POST['post_body'] ?? '') ?></textarea>
+            </div>
 
             <div class="character-row">
                 <span class="character-warning" id="characterWarning">
@@ -886,7 +1021,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
             </div>
 
             <div class="post-tag-wrapper">
-                <label class="post-tag-label">Tag</label>
+                <label class="post-tag-label">Tag <span style="font-weight: 500; color: #9ca3af;">(optional)</span></label>
 
                 <input
                     type="text"
@@ -894,7 +1029,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
                     id="tagInput"
                     class="post-tag-input"
                     maxlength="30"
-                    placeholder="Example: Sports, Technology, Music"
+                    placeholder="Tags help group similar posts"
                     value="<?= htmlspecialchars($_POST['tag'] ?? '') ?>"
                 >
 
@@ -911,7 +1046,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
 
             <div class="post-image-wrapper">
                 <label class="post-image-label" for="postImages">
-                    Optional Photos
+                    Photos <span style="font-weight: 500; color: #9ca3af;">(optional)</span>
                 </label>
 
                 <input
@@ -968,6 +1103,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const postTitle = document.getElementById("postTitle");
     const postBody = document.getElementById("postBody");
     const tagInput = document.getElementById("tagInput");
     const postImages = document.getElementById("postImages");
@@ -996,13 +1132,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updateCharacterCount() {
+        const titleLength = Array.from(postTitle.value).length;
         const bodyLength = getPostCharacterCount(postBody.value);
         const tagLength = Array.from(tagInput.value).length;
 
         characterCount.textContent = bodyLength + " / 2000";
         tagCharacterCount.textContent = tagLength + " / 30";
 
-        if (bodyLength > 2000 || tagLength > 30) {
+        if (titleLength > 200 || bodyLength > 2000 || tagLength > 30) {
             characterWarning.style.display = bodyLength > 2000 ? "inline" : "none";
             characterCount.style.color = bodyLength > 2000 ? "#dc2626" : "#6b7280";
             tagCharacterCount.style.color = tagLength > 30 ? "#dc2626" : "#6b7280";
@@ -1144,18 +1281,21 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    postTitle.addEventListener("input", updateCharacterCount);
     postBody.addEventListener("input", updateCharacterCount);
     tagInput.addEventListener("input", updateCharacterCount);
 
     if (postForm) {
         postForm.addEventListener("submit", function (event) {
+            const trimmedTitle = postTitle.value.trim();
             const trimmedBody = postBody.value.trim();
             const trimmedTag = tagInput.value.trim();
 
+            const titleLength = Array.from(trimmedTitle).length;
             const bodyLength = getPostCharacterCount(trimmedBody);
             const tagLength = Array.from(trimmedTag).length;
 
-            if (bodyLength === 0 || bodyLength > 2000 || tagLength > 30) {
+            if (titleLength > 200 || bodyLength === 0 || bodyLength > 2000 || tagLength > 30) {
                 event.preventDefault();
                 updateCharacterCount();
                 return;

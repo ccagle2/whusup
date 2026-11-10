@@ -473,7 +473,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
         : strlen($bio);
 
     $websiteUrl = trim($_POST['website_url'] ?? '');
-    $location = trim(preg_replace('/\\s+/u', ' ', $_POST['location'] ?? ''));
+    $city = trim(preg_replace('/\\s+/u', ' ', $_POST['city'] ?? ''));
+    $state = trim(preg_replace('/\\s+/u', ' ', $_POST['state'] ?? ''));
     $country = trim(preg_replace('/\\s+/u', ' ', $_POST['country'] ?? ''));
     $jobTitle = trim(preg_replace('/\\s+/u', ' ', $_POST['job_title'] ?? ''));
     $company = trim(preg_replace('/\\s+/u', ' ', $_POST['company'] ?? ''));
@@ -522,9 +523,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
         $message = "Please enter a valid Website URL, including http:// or https://.";
         $message_type = "danger";
 
-    } elseif ($textLength($location) > 150) {
+    } elseif ($textLength($city) > 100) {
 
-        $message = "City / State must be 150 characters or less.";
+        $message = "City must be 100 characters or less.";
+        $message_type = "danger";
+
+    } elseif ($textLength($state) > 100) {
+
+        $message = "State / Region must be 100 characters or less.";
         $message_type = "danger";
 
     } elseif ($textLength($country) > 100) {
@@ -727,7 +733,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
                             job_title = :job_title,
                             company = :company,
                             school = :school,
-                            location = :location,
+                            city = :city,
+                            state = :state,
                             country = :country,
                             profile_picture_url = :profile_picture_url,
                             is_private = :is_private,
@@ -746,7 +753,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['delete_account'])) {
                         ':job_title' => $jobTitle,
                         ':company' => $company,
                         ':school' => $school,
-                        ':location' => $location,
+                        ':city' => $city,
+                        ':state' => $state,
                         ':country' => $country,
                         ':profile_picture_url' => $profileImageKey,
                         ':is_private' => isset($_POST['is_private']) ? 1 : 0,
@@ -1407,13 +1415,26 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
                     </div>
 
                     <div class="account-field">
-                        <label>City / State</label>
+                        <label>City</label>
                         <input
                             type="text"
-                            name="location"
-                            maxlength="150"
-                            placeholder="San Jose, CA"
-                            value="<?= htmlspecialchars($profile['location'] ?? '') ?>"
+                            name="city"
+                            maxlength="100"
+                            placeholder="San Jose"
+                            autocomplete="address-level2"
+                            value="<?= htmlspecialchars($profile['city'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                    </div>
+
+                    <div class="account-field">
+                        <label>State / Region</label>
+                        <input
+                            type="text"
+                            name="state"
+                            maxlength="100"
+                            placeholder="California"
+                            autocomplete="address-level1"
+                            value="<?= htmlspecialchars($profile['state'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                         >
                     </div>
 
@@ -1424,7 +1445,8 @@ $profileImageUrl = !empty($profile['profile_picture_url'])
                             name="country"
                             maxlength="100"
                             placeholder="United States"
-                            value="<?= htmlspecialchars($profile['country'] ?? '') ?>"
+                            autocomplete="country-name"
+                            value="<?= htmlspecialchars($profile['country'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                         >
                     </div>
 
@@ -1626,9 +1648,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const profileInput = document.getElementById("profilePictureInput");
     const profilePreview = document.getElementById("profilePicturePreview");
     const profilePlaceholder = document.getElementById("profilePicturePlaceholder");
-    const previewActions = document.getElementById("profilePicturePreviewActions");
-    const changeButton = document.getElementById("changeProfilePictureButton");
-    const removeButton = document.getElementById("removeProfilePictureButton");
 
     function showPreview(file) {
         if (!profilePreview || !file) {
@@ -1642,10 +1661,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (profilePlaceholder) {
             profilePlaceholder.style.display = "none";
-        }
-
-        if (previewActions) {
-            previewActions.classList.add("show");
         }
 
         profilePreview.onload = function () {
@@ -1674,9 +1689,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        if (previewActions) {
-            previewActions.classList.remove("show");
-        }
     }
 
     if (profilePreview && profilePreview.getAttribute("src")) {
@@ -1711,17 +1723,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    if (changeButton && profileInput) {
-        changeButton.addEventListener("click", function () {
-            profileInput.click();
-        });
-    }
-
-    if (removeButton) {
-        removeButton.addEventListener("click", function () {
-            clearSelectedPreview();
-        });
-    }
 });
 </script>
 

@@ -60,7 +60,7 @@ if (!function_exists('loadCommentsForPosts')) {
                 c.comment_body,
                 c.parent_comment_id,
                 c.created_at,
-                u.name,
+                up.display_name AS name,
                 up.profile_picture_url,
 
                 (
@@ -128,12 +128,13 @@ if (!function_exists('loadSinglePostData')) {
             SELECT
                 p.id,
                 p.user_id,
+                p.title,
                 p.body,
                 p.tag,
                 p.image_key,
                 p.created_at,
                 COALESCE(p.view_count, 0) AS view_count,
-                u.name,
+                up.display_name AS name,
                 up.profile_picture_url,
                 up.bio,
                 up.is_private,
@@ -207,12 +208,13 @@ if (!function_exists('loadTagPostData')) {
             SELECT
                 p.id,
                 p.user_id,
+                p.title,
                 p.body,
                 p.tag,
                 p.image_key,
                 p.created_at,
                 COALESCE(p.view_count, 0) AS view_count,
-                u.name,
+                up.display_name AS name,
                 up.profile_picture_url,
                 up.bio,
                 up.is_private,
@@ -317,12 +319,13 @@ if (!function_exists('loadSearchPostData')) {
             SELECT
                 p.id,
                 p.user_id,
+                p.title,
                 p.body,
                 p.tag,
                 p.image_key,
                 p.created_at,
                 COALESCE(p.view_count, 0) AS view_count,
-                u.name,
+                up.display_name AS name,
                 up.profile_picture_url,
                 up.bio,
                 up.is_private,
@@ -359,17 +362,21 @@ if (!function_exists('loadSearchPostData')) {
                 ON up.user_id = p.user_id
 
             WHERE
-                LOWER(p.body) REGEXP LOWER(:search_body_pattern)
+                LOWER(COALESCE(p.title, '')) REGEXP LOWER(:search_title_pattern)
+                OR LOWER(p.body) REGEXP LOWER(:search_body_pattern)
                 OR LOWER(p.tag) REGEXP LOWER(:search_tag_pattern)
-                OR LOWER(u.name) REGEXP LOWER(:search_author_pattern)
+                OR LOWER(up.display_name) REGEXP LOWER(:search_author_pattern)
 
             ORDER BY
                 CASE
-                    WHEN LOWER(p.tag) = LOWER(:exact_tag_query) THEN 0
-                    WHEN LOWER(u.name) = LOWER(:exact_author_query) THEN 1
-                    WHEN LOWER(p.tag) LIKE LOWER(:tag_starts_with) THEN 2
-                    WHEN LOWER(u.name) LIKE LOWER(:author_starts_with) THEN 3
-                    ELSE 4
+                    WHEN LOWER(COALESCE(p.title, '')) = LOWER(:exact_title_query) THEN 0
+                    WHEN LOWER(COALESCE(p.title, '')) LIKE LOWER(:title_starts_with) THEN 1
+                    WHEN LOWER(p.tag) = LOWER(:exact_tag_query) THEN 2
+                    WHEN LOWER(up.display_name) = LOWER(:exact_author_query) THEN 3
+                    WHEN LOWER(p.tag) LIKE LOWER(:tag_starts_with) THEN 4
+                    WHEN LOWER(up.display_name) LIKE LOWER(:author_starts_with) THEN 5
+                    WHEN LOWER(COALESCE(p.title, '')) REGEXP LOWER(:search_title_rank_pattern) THEN 6
+                    ELSE 7
                 END,
                 p.created_at DESC
 
@@ -381,9 +388,13 @@ if (!function_exists('loadSearchPostData')) {
         $stmt->execute([
             ':current_user_id' => $user_id,
             ':liked_user_id' => $user_id,
+            ':search_title_pattern' => $wholeWordPattern,
+            ':search_title_rank_pattern' => $wholeWordPattern,
             ':search_body_pattern' => $wholeWordPattern,
             ':search_tag_pattern' => $wholeWordPattern,
             ':search_author_pattern' => $wholeWordPattern,
+            ':exact_title_query' => $query,
+            ':title_starts_with' => $query . '%',
             ':exact_tag_query' => $query,
             ':exact_author_query' => $query,
             ':tag_starts_with' => $query . '%',
@@ -414,7 +425,7 @@ if (!function_exists('loadSearchPeopleData')) {
         $stmt = $pdo->prepare("
             SELECT
                 u.id,
-                u.name,
+                up.display_name AS name,
                 up.profile_picture_url,
                 up.bio,
                 up.is_private
@@ -424,15 +435,15 @@ if (!function_exists('loadSearchPeopleData')) {
             LEFT JOIN user_profiles up
                 ON up.user_id = u.id
 
-            WHERE LOWER(u.name) REGEXP LOWER(:search_name_pattern)
+            WHERE LOWER(up.display_name) REGEXP LOWER(:search_name_pattern)
 
             ORDER BY
                 CASE
-                    WHEN LOWER(u.name) = LOWER(:exact_name) THEN 0
-                    WHEN LOWER(u.name) LIKE LOWER(:starts_with) THEN 1
+                    WHEN LOWER(up.display_name) = LOWER(:exact_name) THEN 0
+                    WHEN LOWER(up.display_name) LIKE LOWER(:starts_with) THEN 1
                     ELSE 2
                 END,
-                u.name ASC
+                up.display_name ASC
 
             LIMIT $limit
         ");

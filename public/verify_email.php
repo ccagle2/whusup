@@ -6,10 +6,119 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../config/database.php';
 
+$awsConfig = require __DIR__ . '/../config/aws.php';
+$ses = $awsConfig['ses'] ?? null;
+
 $message = '';
 $success = false;
 $showConfirmButton = false;
 $isEmailChange = false;
+
+function sendWelcomeEmail($ses, string $toEmail, string $name): void
+{
+    if (!$ses) {
+        throw new Exception('SES is not configured.');
+    }
+
+    $fromEmail = 'noreply@whusup.com';
+    $fromName = 'Whusup';
+
+    $safeName = trim($name) !== '' ? trim($name) : 'there';
+
+    $subject = 'Welcome to Whusup';
+
+    $whusupUrl = 'https://whusup.com/dashboard.php';
+
+    $textBody =
+        "Hi {$safeName},\n\n" .
+        "Welcome to Whusup! Your email has been verified and your account is ready.\n\n" .
+        "Here are a few things you can do now:\n" .
+        "- Choose your public display name\n" .
+        "- Add a profile picture and bio\n" .
+        "- Create your first post\n" .
+        "- Find people to follow\n\n" .
+        "Go to Whusup:\n" .
+        $whusupUrl . "\n\n" .
+        "Thanks for joining us,\n" .
+        "Whusup";
+
+    $htmlBody = '
+        <div style="
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #111827;
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 24px;
+        ">
+            <h2 style="margin: 0 0 12px;">
+                Welcome to Whusup
+            </h2>
+
+            <p>
+                Hi ' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . ',
+            </p>
+
+            <p>
+                Your email has been verified and your Whusup account is ready.
+            </p>
+
+            <p>Here are a few things you can do now:</p>
+
+            <ul style="padding-left: 22px;">
+                <li>Choose your public display name</li>
+                <li>Add a profile picture and bio</li>
+                <li>Create your first post</li>
+                <li>Find people to follow</li>
+            </ul>
+
+            <p style="margin: 26px 0;">
+                <a
+                    href="' . htmlspecialchars($whusupUrl, ENT_QUOTES, 'UTF-8') . '"
+                    style="
+                        background: #111827;
+                        color: #ffffff;
+                        padding: 12px 20px;
+                        border-radius: 999px;
+                        text-decoration: none;
+                        font-weight: 700;
+                        display: inline-block;
+                    "
+                >
+                    Go to Whusup
+                </a>
+            </p>
+
+            <p>
+                Thanks for joining us,<br>
+                Whusup
+            </p>
+        </div>
+    ';
+
+    $ses->sendEmail([
+        'Source' => $fromName . ' <' . $fromEmail . '>',
+        'Destination' => [
+            'ToAddresses' => [$toEmail]
+        ],
+        'Message' => [
+            'Subject' => [
+                'Data' => $subject,
+                'Charset' => 'UTF-8'
+            ],
+            'Body' => [
+                'Text' => [
+                    'Data' => $textBody,
+                    'Charset' => 'UTF-8'
+                ],
+                'Html' => [
+                    'Data' => $htmlBody,
+                    'Charset' => 'UTF-8'
+                ]
+            ]
+        ]
+    ]);
+}
 
 if (empty($_SESSION['verify_email_csrf_token'])) {
     $_SESSION['verify_email_csrf_token'] = bin2hex(random_bytes(32));
@@ -51,6 +160,7 @@ if (!$tokenFormatIsValid) {
                         email_verifications.user_id,
                         email_verifications.expires_at,
                         email_verifications.verification_type,
+                        users.name,
                         users.email,
                         users.pending_email,
                         users.email_verified
@@ -231,9 +341,23 @@ if (!$tokenFormatIsValid) {
                             ]);
 
                             $pdo->commit();
-
+                            
                             unset($_SESSION['verify_email_csrf_token']);
-
+                            
+                            /*
+                             * The account is now permanently verified.
+                             * Welcome-email delivery must never prevent successful verification.
+                             */
+                            try {
+                                sendWelcomeEmail(
+                                    $ses,
+                                    (string) $verification['email'],
+                                    (string) ($verification['name'] ?? '')
+                                );
+                            } catch (Exception $e) {
+                                error_log('Welcome email failed: ' . $e->getMessage());
+                            }
+                            
                             $success = true;
                             $message = 'Your email has been verified. You can now log in.';
                         }
@@ -264,6 +388,7 @@ if (!$tokenFormatIsValid) {
                     email_verifications.user_id,
                     email_verifications.expires_at,
                     email_verifications.verification_type,
+                    users.name,
                     users.email,
                     users.pending_email,
                     users.email_verified

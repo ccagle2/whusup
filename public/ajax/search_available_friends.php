@@ -34,14 +34,14 @@ try {
     ];
 
     if ($search !== '') {
-        $search_sql = 'AND users.name LIKE :search';
+        $search_sql = 'AND user_profiles.display_name LIKE :search';
         $params[':search'] = '%' . $search . '%';
     }
 
     $sql = "
         SELECT
             users.id,
-            users.name,
+            user_profiles.display_name AS name,
 
             user_profiles.profile_picture_url,
             user_profiles.bio,
@@ -74,7 +74,7 @@ try {
 
         $search_sql
 
-        ORDER BY users.name ASC
+        ORDER BY user_profiles.display_name ASC
 
         LIMIT :limit OFFSET :offset
     ";

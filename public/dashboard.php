@@ -1,6 +1,8 @@
 <?php
 
 require_once '../includes/auth.php';
+require_once '../config/database.php';
+
 require_login();
 
 include '../includes/header.php';
@@ -9,6 +11,25 @@ include '../includes/navbar.php';
 $page = $_GET['page'] ?? 'social_feed';
 $sort = $_GET['sort'] ?? 'recent';
 $feed_filter = $_GET['filter'] ?? 'all';
+
+$dashboard_display_name = '';
+
+if (!empty($_SESSION['user_id'])) {
+    $displayNameStmt = $pdo->prepare("
+        SELECT display_name
+        FROM user_profiles
+        WHERE user_id = :user_id
+        LIMIT 1
+    ");
+
+    $displayNameStmt->execute([
+        ':user_id' => $_SESSION['user_id']
+    ]);
+
+    $dashboard_display_name = trim(
+        (string) $displayNameStmt->fetchColumn()
+    );
+}
 
 if (!in_array($page, ['social_feed', 'manage_friends', 'post'], true)) {
     $page = 'social_feed';
@@ -48,21 +69,70 @@ function dashboardUrl(
 .dashboard-top {
     width: 100%;
     max-width: 900px;
-    margin: 24px auto 10px;
-    padding: 0 20px;
+    margin: 24px auto 18px;
+    padding: 18px 20px;
+
+    background: #f2f2f2;
+    border: 1px solid #dedede;
+    border-radius: 16px;
+
+    box-shadow:
+        0 1px 2px rgba(15, 23, 42, 0.03),
+        0 6px 18px rgba(15, 23, 42, 0.035);
+
     box-sizing: border-box;
 }
 
 .dashboard-welcome {
-    margin-bottom: 16px;
-
+    margin: 0 0 16px;
     color: #6b7280;
-
     font-family: "Poppins", sans-serif;
     font-size: 20px;
-    font-weight: 600;
-
+    font-weight: 500;
+    line-height: 1.4;
     text-align: center;
+}
+
+.dashboard-welcome-name {
+    color: #374151;
+    font-weight: 700;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Mobile / tablet dashboard search
+|--------------------------------------------------------------------------
+*/
+
+.dashboard-mobile-search {
+    display: none;
+}
+
+.dashboard-mobile-search .form-control {
+    width: 100%;
+    min-height: 46px;
+    padding: 11px 18px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+
+    background: #ffffff;
+    color: #111827;
+
+    font-size: 15px;
+    line-height: 1.4;
+
+    box-sizing: border-box;
+}
+
+.dashboard-mobile-search .form-control::placeholder {
+    color: #6b7280;
+    opacity: 0.8;
+}
+
+.dashboard-mobile-search .form-control:focus {
+    border-color: #9ca3af;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.06);
 }
 
 
@@ -189,7 +259,7 @@ function dashboardUrl(
 }
 
 .dashboard-follow-button:hover {
-    background: #f8fafc;
+    background: #f2f2f2;
     border-color: #9ca3af;
     color: #111827;
 
@@ -276,24 +346,6 @@ function dashboardUrl(
 
 /*
 |--------------------------------------------------------------------------
-| Divider
-|--------------------------------------------------------------------------
-*/
-
-.dashboard-divider {
-    width: 100%;
-    height: 1px;
-
-    margin: 0;
-
-    border-radius: 999px;
-
-    background: #e5e7eb;
-}
-
-
-/*
-|--------------------------------------------------------------------------
 | Keyboard focus
 |--------------------------------------------------------------------------
 */
@@ -304,6 +356,21 @@ function dashboardUrl(
     outline-offset: 2px;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Mobile / tablet
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 991px) {
+
+    .dashboard-mobile-search {
+        display: block;
+        width: 100%;
+        margin-bottom: 16px;
+    }
+
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -315,22 +382,22 @@ function dashboardUrl(
 
     .dashboard-top {
         max-width: none;
-        width: 100%;
+        width: calc(100% - 20px);
 
-        margin: 12px auto 8px;
-        padding: 0 10px;
+        margin: 12px auto 10px;
+        padding: 14px 12px;
+
+        border-radius: 14px;
     }
 
     .dashboard-welcome {
-        margin-bottom: 13px;
-
-        font-size: 18px;
+        display: none;
     }
 
     .dashboard-controls {
         display: block;
 
-        margin-bottom: 12px;
+        margin-bottom: 0;
     }
 
     .dashboard-control-group {
@@ -378,23 +445,82 @@ function dashboardUrl(
     }
 
 }
+
+/*
+|--------------------------------------------------------------------------
+| Small mobile - full-width dashboard controls
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 576px) {
+
+    .dashboard-top {
+        width: 100vw;
+        max-width: none;
+
+        /*
+         * Match the mobile guest card positioning.
+         * The site reserves slightly more vertical space for the
+         * fixed navbar than the mobile navbar actually requires.
+         */
+        margin-top: -18px;
+        margin-bottom: 1rem;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+
+        padding: 14px 12px;
+
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+
+        box-shadow: none;
+    }
+
+}
+
 </style>
 
 <?php
 if ($page === 'social_feed'):
-
-    $first_name = explode(
-        ' ',
-        trim($_SESSION['user_name'] ?? 'User')
-    )[0];
 ?>
 
     <div class="dashboard-top">
 
-        <div class="dashboard-welcome">
-            Welcome back <?= htmlspecialchars($first_name) ?>!
-        </div>
-
+        <?php if ($dashboard_display_name !== ''): ?>
+            <div class="dashboard-welcome">
+                Welcome,
+                <span class="dashboard-welcome-name">
+                    <?= htmlspecialchars(
+                        $dashboard_display_name,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
+                </span>
+            </div>
+        <?php endif; ?>
+        
+        <form
+            class="dashboard-mobile-search"
+            role="search"
+            method="GET"
+            action="/search.php"
+        >
+            <input
+                class="form-control text-center"
+                type="search"
+                name="q"
+                value=""
+                placeholder="Find Anything"
+                aria-label="Search topics, people and posts"
+                minlength="3"
+                maxlength="100"
+                autocomplete="off"
+                enterkeyhint="search"
+                required
+            >
+        </form>
+        
         <div class="dashboard-controls">
 
             <!-- Primary navigation actions -->
@@ -425,7 +551,7 @@ if ($page === 'social_feed'):
                         ) ?>"
                         class="dashboard-primary-button dashboard-follow-button"
                     >
-                        Follow Friends
+                        Follow
                     </a>
 
                 </div>
@@ -516,7 +642,6 @@ if ($page === 'social_feed'):
 
         </div>
 
-        <div class="dashboard-divider"></div>
 
     </div>
 

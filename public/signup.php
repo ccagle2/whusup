@@ -730,7 +730,7 @@ body {
 
 .auth-helper-text {
     color: #6b7280;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .auth-divider {
@@ -867,6 +867,10 @@ body {
 
                             </div>
 
+                            <div class="auth-helper-text mb-3" style="margin-top: -8px;">
+                                You can change your public display name after you sign up.
+                            </div>
+
                             <div class="form-floating mb-3">
 
                                 <input
@@ -948,7 +952,7 @@ body {
                             </div>
 
                             <div class="mb-4 auth-helper-text">
-                                Use at least 6 characters for your password. Please enter your first and last name using letters only. You will need to verify your email before logging in.
+                                Use at least 6 characters for your password. You will need to verify your email before logging in.
                             </div>
 
                             <div class="d-grid">

@@ -52,12 +52,13 @@ try {
         SELECT 
             posts.id,
             posts.user_id,
+            posts.title,
             posts.body,
             posts.tag,
             posts.image_key,
             posts.created_at,
             COALESCE(posts.view_count, 0) AS view_count,
-            users.name,
+            user_profiles.display_name AS name,
 
             user_profiles.profile_picture_url,
             user_profiles.bio,
@@ -67,8 +68,9 @@ try {
             COUNT(DISTINCT post_comments.id) AS comment_count,
 
             (
-                COUNT(DISTINCT post_likes.id) + 
-                COUNT(DISTINCT post_comments.id)
+                (COUNT(DISTINCT post_likes.id) * 3) +
+                (COUNT(DISTINCT post_comments.id) * 4) +
+                (COALESCE(posts.view_count, 0) * 0.10)
             ) AS popularity_score,
 
             GREATEST(
@@ -103,12 +105,13 @@ try {
         GROUP BY 
             posts.id,
             posts.user_id,
+            posts.title,
             posts.body,
             posts.tag,
             posts.image_key,
             posts.created_at,
             posts.view_count,
-            users.name,
+            user_profiles.display_name,
             user_profiles.profile_picture_url,
             user_profiles.bio,
             user_profiles.is_private
@@ -160,7 +163,8 @@ if (!empty($recent_posts)) {
                 post_comments.parent_comment_id,
                 post_comments.comment_body,
                 post_comments.created_at,
-                users.name,
+                comment_profiles.display_name AS name,
+                comment_profiles.profile_picture_url,
                 COUNT(DISTINCT comment_likes.id) AS like_count,
                 MAX(
                     CASE
@@ -174,6 +178,9 @@ if (!empty($recent_posts)) {
             JOIN users
                 ON users.id = post_comments.user_id
 
+            LEFT JOIN user_profiles comment_profiles
+                ON comment_profiles.user_id = post_comments.user_id
+
             LEFT JOIN comment_likes
                 ON comment_likes.comment_id = post_comments.id
 
@@ -186,7 +193,8 @@ if (!empty($recent_posts)) {
                 post_comments.parent_comment_id,
                 post_comments.comment_body,
                 post_comments.created_at,
-                users.name
+                comment_profiles.display_name,
+                comment_profiles.profile_picture_url
 
             ORDER BY post_comments.created_at ASC
         ";

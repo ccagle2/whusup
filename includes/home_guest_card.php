@@ -202,7 +202,7 @@ if (!empty($_SESSION['user_id'])) {
 
             <p>
                 Talk about anything.<br>
-                Ad-free Social Media | No Corporate Oversight
+                No ads. No big tech. No AI.
             </p>
         </div>
 

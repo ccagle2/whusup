@@ -513,62 +513,114 @@
     font-size: 14px;
 }
 
+/* Clean, conversation-first comment layout. */
 .comment-box {
-    background: #f8fafc;
-    padding: 14px;
-    border-radius: 14px;
-    margin-top: 12px;
-    border: 1px solid #e5e7eb;
-    transition: background 0.2s ease;
+    position: relative;
+    margin-top: 18px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
 }
 
 .comment-box:hover {
-    background: #f1f5f9;
+    background: transparent;
 }
 
+/*
+ * Replies retain the existing recursive DOM structure used by post_scripts.php,
+ * but use a restrained thread line instead of nested cards.
+ */
 .comment-reply {
-    margin-left: 34px;
-    margin-top: 10px;
-    border-left: 3px solid #dbeafe;
+    margin-top: 16px;
+    margin-left: 22px;
+    padding-left: 16px;
+    border-left: 2px solid #e5e7eb;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.comment-profile-emblem,
+.comment-avatar {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #4b5563;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    font-family: "Poppins", sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.comment-profile-emblem-image,
+.comment-avatar-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 50%;
+}
+
+.comment-author-meta {
+    min-width: 0;
 }
 
 .comment-name {
-    font-weight: 700;
     color: #111827;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .comment-date {
-    color: #9ca3af;
-    font-size: 11px;
     margin-top: 2px;
-    margin-bottom: 8px;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.3;
 }
 
 .comment-body {
-    color: #374151;
-    line-height: 1.55;
-    font-size: 14px;
-    margin-bottom: 10px;
+    margin-top: 9px;
+    margin-bottom: 8px;
+    color: #333333;
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: left;
     word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .comment-owner-actions {
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-top: 8px;
+    gap: 15px;
+    margin-top: 6px;
     flex-wrap: wrap;
 }
 
 .comment-owner-actions .like-indicator {
-    font-size: 12px;
     padding: 0;
+    font-size: 13px;
 }
 
 .comment-owner-actions .like-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 19px;
+    height: 19px;
 }
 
 .comment-like-indicator.can-like:hover {
@@ -576,11 +628,12 @@
 }
 
 .comment-action-link {
-    background: none;
-    border: none;
     padding: 0;
-    font-size: 12px;
+    border: none;
+    background: none;
+    font-size: 13px;
     font-weight: 700;
+    line-height: 1.35;
     cursor: pointer;
     transition: opacity 0.2s ease;
 }
@@ -604,28 +657,30 @@
 .reply-collapse-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 12px;
-    background: #ffffff;
-    border: 1px solid #dbeafe;
+    gap: 5px;
+    margin-top: 9px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: #2563eb;
-    padding: 7px 13px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 800;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
 .reply-collapse-toggle::before {
     content: "↳";
-    font-weight: 900;
+    font-weight: 800;
 }
 
 .reply-collapse-toggle:hover {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-    transform: translateY(-1px);
+    background: transparent;
+    border-color: transparent;
+    transform: none;
+    opacity: 0.72;
 }
 
 .collapsed-replies {
@@ -878,7 +933,37 @@ body.lightbox-open {
     }
 
     .comment-reply {
-        margin-left: 18px;
+        margin-left: 10px;
+        padding-left: 10px;
+    }
+
+    .comment-profile-emblem,
+.comment-avatar {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+        font-size: 12px;
+    }
+
+    .comment-header {
+        gap: 9px;
+    }
+
+    .comment-name {
+        font-size: 15px;
+    }
+
+    .comment-date {
+        font-size: 12px;
+    }
+
+    .comment-body {
+        font-size: 16px;
+        line-height: 1.58;
+    }
+
+    .comment-owner-actions {
+        gap: 13px;
     }
 
 

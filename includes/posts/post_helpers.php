@@ -46,6 +46,26 @@ if (!function_exists('timeAgo')) {
     }
 }
 
+if (!function_exists('formatCompactNumber')) {
+    function formatCompactNumber($number): string {
+        $number = max(0, (int) $number);
+
+        if ($number >= 1000000) {
+            $formatted = round($number / 1000000, 1);
+
+            return rtrim(rtrim(number_format($formatted, 1, '.', ''), '0'), '.') . 'M';
+        }
+
+        if ($number >= 1000) {
+            $formatted = round($number / 1000, 1);
+
+            return rtrim(rtrim(number_format($formatted, 1, '.', ''), '0'), '.') . 'k';
+        }
+
+        return number_format($number);
+    }
+}
+
 if (!function_exists('linkifyText')) {
     function linkifyText($text) {
         $escaped = htmlspecialchars(trim((string) $text), ENT_QUOTES, 'UTF-8');
@@ -89,7 +109,41 @@ if (!function_exists('makePostSlug')) {
             $text = $fallback;
         }
 
-        return substr($text, 0, 80);
+        return rtrim(substr($text, 0, 80), '-');
+    }
+}
+
+if (!function_exists('getPostSlug')) {
+    /**
+     * Return the canonical slug for a post.
+     *
+     * Slug priority:
+     * 1. Optional post title
+     * 2. Post body
+     * 3. Tag
+     * 4. whusup-post fallback
+     *
+     * The numeric post ID remains the permanent identifier. The slug is
+     * descriptive and may change when a post title/body is edited.
+     */
+    function getPostSlug(array $post): string {
+        $title = trim((string) ($post['title'] ?? ''));
+        $body = trim((string) ($post['body'] ?? ''));
+        $tag = trim((string) ($post['tag'] ?? ''));
+
+        if ($title !== '') {
+            return makePostSlug($title);
+        }
+
+        if ($body !== '') {
+            return makePostSlug($body);
+        }
+
+        if ($tag !== '') {
+            return makePostSlug($tag);
+        }
+
+        return makePostSlug('');
     }
 }
 

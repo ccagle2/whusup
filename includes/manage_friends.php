@@ -79,7 +79,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT
             users.id,
-            users.name,
+            user_profiles.display_name AS name,
             user_profiles.profile_picture_url,
             user_profiles.bio,
 
@@ -107,7 +107,7 @@ try {
         AND friendships.status = 'accepted'
         AND users.email_verified = 1
 
-        ORDER BY users.name ASC
+        ORDER BY user_profiles.display_name ASC
     ");
 
     $stmt->execute([
@@ -142,7 +142,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT
             users.id,
-            users.name,
+            user_profiles.display_name AS name,
             user_profiles.profile_picture_url,
             user_profiles.bio,
 
@@ -174,7 +174,7 @@ try {
             AND friendships.friend_id = users.id
         )
 
-        ORDER BY users.name ASC
+        ORDER BY user_profiles.display_name ASC
 
         LIMIT :limit
     ");
@@ -1228,7 +1228,7 @@ body.profile-image-modal-open {
                 <?php
 
                 $friendName =
-                    ucwords((string) $friend['name']);
+                    (string) $friend['name'];
 
                 $friendImageKey =
                     $friend['profile_picture_url'] ?? '';
@@ -1399,7 +1399,7 @@ body.profile-image-modal-open {
                 <?php
 
                 $personName =
-                    ucwords((string) $person['name']);
+                    (string) $person['name'];
 
                 $personImageKey =
                     $person['profile_picture_url'] ?? '';

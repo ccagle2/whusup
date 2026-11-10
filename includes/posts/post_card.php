@@ -463,6 +463,48 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
         }
     }
 
+    .recent-post-title {
+        margin: 0.9rem 0 0.35rem;
+        color: #111827;
+        margin-bottom: 20px;
+        font-size: 1.08rem;
+        font-weight: 800;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .recent-post-title.is-empty {
+        display: none;
+    }
+
+    .edit-post-field {
+        margin-bottom: 0.8rem;
+    }
+
+    .edit-post-label {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: #374151;
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .edit-post-label-note {
+        color: #9ca3af;
+        font-weight: 500;
+    }
+
+    .edit-post-title-input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.65rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #111827;
+        font: inherit;
+    }
+
     </style>
 
     <script>
@@ -901,23 +943,55 @@ if (empty($render_single_post_card)) {
                 $view_count = max(0, (int) ($post['view_count'] ?? 0));
                 $is_owner = $is_logged_in && $post['user_id'] === $user_id;
 
-                $postShareSlug = makePostSlug(
-                    !empty($post['tag']) ? $post['tag'] : $post['body']
-                );
-                $postSharePath = '/post/' . rawurlencode((string) $post_id) . '/' . rawurlencode($postShareSlug);
-                $postShareTitleSource = !empty($post['tag'])
-                    ? trim((string) $post['tag'])
-                    : trim((string) ($post['body'] ?? ''));
-                $postShareTitle = function_exists('mb_substr')
-                    ? mb_substr($postShareTitleSource, 0, 80, 'UTF-8')
-                    : substr($postShareTitleSource, 0, 80);
+                $postTitle = trim((string) ($post['title'] ?? ''));
 
+                $postSlugSource = $postTitle !== ''
+                    ? $postTitle
+                    : trim((string) ($post['body'] ?? ''));
+
+                if ($postSlugSource === '') {
+                    $postSlugSource = trim((string) ($post['tag'] ?? ''));
+                }
+
+                if ($postSlugSource === '') {
+                    $postSlugSource = 'post';
+                }
+
+
+                $postShareSlug = getPostSlug($post);
+                
+                $postSharePath =
+                    '/post/' .
+                    rawurlencode((string) $post_id) .
+                    '/' .
+                    rawurlencode($postShareSlug);
+                
+                /*
+                 * Share-title priority mirrors the SEO hierarchy:
+                 *
+                 * title -> body -> tag -> Whusup post
+                 */
+                $postShareTitleSource = trim((string) ($post['title'] ?? ''));
+                
+                if ($postShareTitleSource === '') {
+                    $postShareTitleSource = trim((string) ($post['body'] ?? ''));
+                }
+                
+                if ($postShareTitleSource === '') {
+                    $postShareTitleSource = trim((string) ($post['tag'] ?? ''));
+                }
+                
+                $postShareTitle = function_exists('mb_substr')
+                    ? mb_substr($postShareTitleSource, 0, 100, 'UTF-8')
+                    : substr($postShareTitleSource, 0, 100);
+                
                 if ($postShareTitle === '') {
                     $postShareTitle = 'Whusup post';
                 }
 
+
                 $authorName = trim((string) ($post['name'] ?? 'User'));
-                $authorDisplayName = ucwords($authorName);
+                $authorDisplayName = $authorName;
                 /*
                  * The feed query should expose user_profiles.bio and
                  * user_profiles.is_private. A bio is shown only when the
@@ -1001,6 +1075,10 @@ if (empty($render_single_post_card)) {
                     >
                         <?= htmlspecialchars(timeAgo($post['created_at'])) ?>
                     </a>
+                </div>
+
+                <div class="recent-post-title<?= $postTitle === '' ? ' is-empty' : '' ?>">
+                    <?= htmlspecialchars($postTitle) ?>
                 </div>
 
                 <div class="recent-post-text-wrapper<?= $isLongPostBody ? ' is-collapsible' : '' ?>">
@@ -1121,7 +1199,25 @@ if (empty($render_single_post_card)) {
                         <form class="edit-post-form ajax-edit-post-form">
                             <input type="hidden" name="post_id" value="<?= htmlspecialchars($post_id) ?>">
 
-                            <textarea name="post_body"><?= htmlspecialchars($post['body']) ?></textarea>
+                            <div class="edit-post-field">
+                                <label class="edit-post-label">
+                                    Title <span class="edit-post-label-note">(optional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    class="edit-post-title-input"
+                                    maxlength="200"
+                                    value="<?= htmlspecialchars($postTitle, ENT_QUOTES, 'UTF-8') ?>"
+                                >
+                            </div>
+
+                            <div class="edit-post-field">
+                                <label class="edit-post-label">
+                                    Body <span class="edit-post-label-note">(required)</span>
+                                </label>
+                                <textarea name="post_body" maxlength="2000"><?= htmlspecialchars($post['body']) ?></textarea>
+                            </div>
 
                             <button type="submit" class="recent-post-button">
                                 Save Post
@@ -1231,7 +1327,7 @@ if (empty($render_single_post_card)) {
                                 class="post-view-count"
                                 data-post-id="<?= htmlspecialchars($post_id) ?>"
                             >
-                                <?= htmlspecialchars(number_format($view_count)) ?>
+                                <?= htmlspecialchars(formatCompactNumber($view_count)) ?>
                             </span>
                         </span>
 

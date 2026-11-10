@@ -5,7 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $is_logged_in = !empty($_SESSION['user_id']);
-$is_search_page = basename($_SERVER['PHP_SELF'] ?? '') === 'search.php';
+
+$is_search_page =
+    basename($_SERVER['PHP_SELF'] ?? '') === 'search.php';
 
 $logo_href = $is_logged_in
     ? '/dashboard.php'
@@ -17,14 +19,19 @@ $logo_href = $is_logged_in
     position: fixed;
     top: 0;
     left: 0;
+
     width: 100%;
+
     z-index: 9999;
 
     padding: 6px 0;
 
     background: #ffffff;
+
     border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .navbar-inner {
@@ -39,9 +46,11 @@ $logo_href = $is_logged_in
 .logo-brand {
     display: inline-flex;
     align-items: flex-end;
+
     gap: 4px;
 
     line-height: 1;
+
     text-decoration: none;
 }
 
@@ -54,10 +63,12 @@ $logo_href = $is_logged_in
     font-size: 3rem;
     font-weight: 400;
     font-style: normal;
+
     line-height: 0.9;
     letter-spacing: 0;
 
     -webkit-text-stroke: 1.7px #dc2626;
+
     paint-order: stroke fill;
 
     transform: rotate(-6deg);
@@ -82,6 +93,7 @@ $logo_href = $is_logged_in
     font-family: "Poppins", sans-serif;
     font-size: 1.4rem;
     font-weight: 700;
+
     letter-spacing: -0.5px;
 }
 
@@ -100,6 +112,7 @@ $logo_href = $is_logged_in
 .navbar-search .form-control {
     width: 100%;
     min-height: 42px;
+
     padding: 10px 18px;
 
     border: 1px solid #d1d5db;
@@ -125,6 +138,7 @@ $logo_href = $is_logged_in
 .navbar-mobile-actions {
     display: flex;
     align-items: center;
+
     gap: 8px;
 
     margin-left: auto;
@@ -143,6 +157,7 @@ $logo_href = $is_logged_in
 
     width: 39px;
     height: 39px;
+
     flex-shrink: 0;
 
     border: 1px solid #e5e7eb;
@@ -162,31 +177,37 @@ $logo_href = $is_logged_in
 .nav-notification:hover {
     background: #e5e7eb;
     color: #111827;
+
     transform: translateY(-1px);
 }
 
 .nav-bell {
     display: inline-block;
+
     width: 20px;
     height: 20px;
 }
 
 .nav-bell svg {
     display: block;
+
     width: 20px;
     height: 20px;
 }
 
 .nav-bell svg path {
     fill: none;
+
     stroke: #111827;
     stroke-width: 2;
+
     stroke-linecap: round;
     stroke-linejoin: round;
 }
 
 .nav-notification-count {
     position: absolute;
+
     top: -6px;
     right: -6px;
 
@@ -196,6 +217,7 @@ $logo_href = $is_logged_in
 
     min-width: 19px;
     height: 19px;
+
     padding: 0 5px;
 
     border: 2px solid #ffffff;
@@ -217,9 +239,6 @@ $logo_href = $is_logged_in
 
 /* =========================================================
    Navbar buttons
-   =========================================================
-   Typography intentionally matches dashboard-action-button:
-   no custom font-family and no forced line-height.
    ========================================================= */
 
 .nav-modern-btn {
@@ -230,6 +249,7 @@ $logo_href = $is_logged_in
     flex: 0 0 auto;
 
     min-height: 35px;
+
     padding: 7px 20px;
 
     border: 1px solid transparent;
@@ -240,6 +260,7 @@ $logo_href = $is_logged_in
 
     text-align: center;
     text-decoration: none;
+
     white-space: nowrap;
 
     box-sizing: border-box;
@@ -248,74 +269,96 @@ $logo_href = $is_logged_in
         background-color 0.2s ease,
         border-color 0.2s ease,
         color 0.2s ease,
-        transform 0.2s ease;
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .nav-modern-btn:hover {
     transform: translateY(-1px);
 }
 
+.nav-modern-btn:focus-visible {
+    outline: 3px solid rgba(17, 24, 39, 0.16);
+    outline-offset: 2px;
+}
+
+/* Light / secondary button */
+
 .nav-btn-light {
     background: #f3f4f6;
-    color: #4b5563;
+    color: #374151;
+
     border-color: #d1d5db;
 }
 
 .nav-btn-light:hover {
     background: #e5e7eb;
     color: #111827;
+
     border-color: #cbd5e1;
 }
+
+/* Primary button */
 
 .nav-btn-primary {
     background: #111827;
     color: #ffffff;
+
     border-color: #111827;
 }
 
 .nav-btn-primary:hover {
     background: #374151;
     color: #ffffff;
+
     border-color: #374151;
 }
+
+/* Log Out */
 
 .nav-btn-danger {
     background: #850101;
     color: #ffffff;
+
     border-color: #850101;
 }
 
 .nav-btn-danger:hover {
     background: #6b0000;
     color: #ffffff;
+
     border-color: #6b0000;
 }
 
 /* =========================================================
-   About link
+   Support Whusup
+
+   Uses the same dark-red family as Log Out, but as an
+   outlined button so it remains visible without dominating
+   the navbar.
    ========================================================= */
 
-.nav-about-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+.nav-btn-support {
+    background: #ffffff;
+    color: #850101;
 
-    margin-left: 10px;
-    padding: 7px 6px;
+    border-color: #850101;
 
-    color: #6b7280;
-
-    font-size: 13px;
-    font-weight: 600;
-
-    text-decoration: none;
-    white-space: nowrap;
-
-    transition: color 0.2s ease;
+    box-shadow: none;
 }
 
-.nav-about-link:hover {
-    color: #111827;
+.nav-btn-support:hover {
+    background: #850101;
+    color: #ffffff;
+
+    border-color: #850101;
+
+    box-shadow: none;
+}
+
+.nav-btn-support:focus-visible {
+    outline: 3px solid rgba(133, 1, 1, 0.18);
+    outline-offset: 2px;
 }
 
 /* =========================================================
@@ -326,6 +369,7 @@ $logo_href = $is_logged_in
     padding: 6px 8px;
 
     border: none;
+
     box-shadow: none !important;
 }
 
@@ -357,6 +401,7 @@ $logo_href = $is_logged_in
 @media (min-width: 992px) {
     .navbar-search {
         flex: 1;
+
         max-width: 600px;
 
         margin-left: 2rem;
@@ -376,11 +421,13 @@ $logo_href = $is_logged_in
 
     .logo-w {
         font-size: 2.4rem;
+
         -webkit-text-stroke-width: 1.25px;
     }
 
     .logo-social {
         margin-bottom: 4px;
+
         font-size: 1.15rem;
     }
 
@@ -394,6 +441,7 @@ $logo_href = $is_logged_in
 
     .navbar-collapse {
         position: fixed;
+
         top: 0;
         right: -100%;
 
@@ -401,11 +449,13 @@ $logo_href = $is_logged_in
 
         width: 100%;
         height: 100vh;
+
         padding: 90px 22px 30px;
 
         background: #ffffff;
 
         overflow-y: auto;
+
         z-index: 10000;
 
         transition: right 0.28s ease;
@@ -419,6 +469,7 @@ $logo_href = $is_logged_in
         content: "Menu";
 
         position: absolute;
+
         top: 24px;
         left: 22px;
 
@@ -431,6 +482,7 @@ $logo_href = $is_logged_in
 
     .mobile-menu-close {
         position: absolute;
+
         top: 18px;
         right: 24px;
 
@@ -439,6 +491,7 @@ $logo_href = $is_logged_in
         padding: 0;
 
         border: none;
+
         background: transparent;
         color: #111827;
 
@@ -446,17 +499,20 @@ $logo_href = $is_logged_in
         line-height: 1;
 
         cursor: pointer;
+
         z-index: 10001;
     }
 
     .navbar-search {
         width: 100% !important;
         max-width: none !important;
+
         margin: 0 0 22px !important;
     }
 
     .navbar-search .form-control {
         min-height: 50px;
+
         padding: 14px 20px;
 
         font-size: 17px;
@@ -470,42 +526,57 @@ $logo_href = $is_logged_in
         opacity: 0.72;
     }
 
+    .navbar-search-logged-in {
+        display: none;
+    }
+
     .navbar-auth {
         display: flex !important;
+
         flex-direction: column !important;
+
         align-items: stretch;
 
         width: 100%;
+
         gap: 12px !important;
+
         margin-top: 0 !important;
     }
 
     .nav-modern-btn {
         width: 100%;
+
         min-height: 45px;
+
         padding: 12px 18px;
 
         font-size: 15px;
+
         text-align: center;
     }
 
-    .nav-about-link {
-        width: 100%;
-        min-height: 40px;
-        margin-left: 0;
-        padding: 9px 12px;
-
-        font-size: 15px;
-        text-align: center;
+    /*
+     * Support is the final navbar action, so it naturally
+     * appears at the bottom of the mobile menu.
+     */
+    .nav-btn-support {
+        margin-top: 4px;
     }
 }
 </style>
 
-<nav class="navbar navbar-expand-lg navbar-light custom-navbar">
+<nav
+    class="navbar navbar-expand-lg navbar-light custom-navbar"
+>
     <div class="container-fluid navbar-inner">
 
         <a
-            href="<?= htmlspecialchars($logo_href) ?>"
+            href="<?= htmlspecialchars(
+                $logo_href,
+                ENT_QUOTES,
+                'UTF-8'
+            ) ?>"
             class="logo-brand"
             aria-label="Whusup home"
         >
@@ -524,9 +595,17 @@ $logo_href = $is_logged_in
                     aria-label="Notifications"
                 >
                     <span class="nav-bell">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        <svg
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                            ></path>
+
+                            <path
+                                d="M13.73 21a2 2 0 0 1-3.46 0"
+                            ></path>
                         </svg>
                     </span>
 
@@ -572,24 +651,26 @@ $logo_href = $is_logged_in
             <?php if (!$is_search_page): ?>
 
                 <form
-                    class="navbar-search mx-lg-auto my-3 my-lg-0"
+                    class="navbar-search <?= $is_logged_in
+                        ? 'navbar-search-logged-in'
+                        : '' ?> mx-lg-auto my-3 my-lg-0"
                     role="search"
                     method="GET"
                     action="/search.php"
                 >
-                <input
-                    class="form-control text-center rounded-pill"
-                    type="search"
-                    name="q"
-                    value=""
-                    placeholder="Find Anything"
-                    aria-label="Search topics, people and posts"
-                    minlength="3"
-                    maxlength="100"
-                    autocomplete="off"
-                    enterkeyhint="search"
-                    required
-                >
+                    <input
+                        class="form-control text-center rounded-pill"
+                        type="search"
+                        name="q"
+                        value=""
+                        placeholder="Find Anything"
+                        aria-label="Search topics, people and posts"
+                        minlength="3"
+                        maxlength="100"
+                        autocomplete="off"
+                        enterkeyhint="search"
+                        required
+                    >
                 </form>
 
             <?php endif; ?>
@@ -607,9 +688,17 @@ $logo_href = $is_logged_in
                         aria-label="Notifications"
                     >
                         <span class="nav-bell">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            <svg
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                                ></path>
+
+                                <path
+                                    d="M13.73 21a2 2 0 0 1-3.46 0"
+                                ></path>
                             </svg>
                         </span>
 
@@ -619,13 +708,6 @@ $logo_href = $is_logged_in
                         >
                             0
                         </span>
-                    </a>
-
-                    <a
-                        href="/dashboard.php"
-                        class="nav-modern-btn nav-btn-light"
-                    >
-                        Dashboard
                     </a>
 
                     <a
@@ -642,29 +724,20 @@ $logo_href = $is_logged_in
                         Log Out
                     </a>
 
-                <?php else: ?>
-
-                    <a
-                        href="/login.php"
-                        class="nav-modern-btn nav-btn-light"
-                    >
-                        Log In
-                    </a>
-
-                    <a
-                        href="/signup.php"
-                        class="nav-modern-btn nav-btn-primary"
-                    >
-                        Sign Up
-                    </a>
-
                 <?php endif; ?>
 
                 <a
                     href="/about.php"
-                    class="nav-about-link"
+                    class="nav-modern-btn nav-btn-light"
                 >
                     About
+                </a>
+
+                <a
+                    href="/support.php"
+                    class="nav-modern-btn nav-btn-support"
+                >
+                    Support Whusup
                 </a>
 
             </div>
@@ -686,6 +759,7 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
     let lastNotificationFetch = 0;
+
     const minimumFetchGap = 30000;
 
     function updateNotificationBadges(count) {
@@ -697,28 +771,34 @@ document.addEventListener("DOMContentLoaded", function () {
             ? "99+"
             : String(safeCount);
 
-        [desktopBadge, mobileBadge].forEach(function (badge) {
-            if (!badge) {
-                return;
-            }
+        [desktopBadge, mobileBadge].forEach(
+            function (badge) {
+                if (!badge) {
+                    return;
+                }
 
-            if (safeCount <= 0) {
-                badge.classList.add("hidden");
-                badge.textContent = "0";
-                return;
-            }
+                if (safeCount <= 0) {
+                    badge.classList.add("hidden");
 
-            badge.textContent = displayCount;
-            badge.classList.remove("hidden");
-        });
+                    badge.textContent = "0";
+
+                    return;
+                }
+
+                badge.textContent = displayCount;
+
+                badge.classList.remove("hidden");
+            }
+        );
     }
 
     function loadNotificationCount(force) {
         const now = Date.now();
 
         if (
-            !force &&
-            now - lastNotificationFetch < minimumFetchGap
+            !force
+            && now - lastNotificationFetch
+                < minimumFetchGap
         ) {
             return;
         }
@@ -727,9 +807,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         fetch("/ajax/notification_count.php", {
             method: "GET",
+
             headers: {
                 "Accept": "application/json"
             },
+
             cache: "no-store"
         })
         .then(function (response) {
@@ -758,9 +840,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     loadNotificationCount(true);
 
-    window.addEventListener("focus", function () {
-        loadNotificationCount(false);
-    });
+    window.addEventListener(
+        "focus",
+        function () {
+            loadNotificationCount(false);
+        }
+    );
 
     document.addEventListener(
         "visibilitychange",

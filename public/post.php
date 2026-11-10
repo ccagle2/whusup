@@ -93,27 +93,51 @@ if (empty($recent_posts)) {
 
 $post = $recent_posts[0];
 
+$postTitle = trim((string) ($post['title'] ?? ''));
 $postTag = trim((string) ($post['tag'] ?? ''));
 $postBody = trim((string) ($post['body'] ?? ''));
 $postAuthor = trim((string) ($post['name'] ?? 'Whusup user'));
 
 /*
- * Build the clean, permanent URL for this post.
+ * Build the current canonical post URL.
  *
- * Example:
- * https://whusup.com/post/195/gilroy-gardens
+ * The numeric post ID is permanent. The descriptive slug may change
+ * whenever the post title/body is edited.
  */
-$postSlugSource = $postTag !== ''
-    ? $postTag
-    : $postBody;
-
-$postSlug = makePostSlug($postSlugSource);
+$postSlug = getPostSlug($post);
 
 $canonicalUrl =
     'https://whusup.com/post/' .
     rawurlencode((string) $post_id) .
     '/' .
     rawurlencode($postSlug);
+
+/*
+ * Redirect non-canonical post URLs to the current canonical URL.
+ *
+ * Examples:
+ *
+ * /post/273
+ * /post/273/old-title
+ * /post/273/incorrect-slug
+ *
+ * all redirect permanently to:
+ *
+ * /post/273/current-canonical-slug
+ *
+ * Normalize a supplied slug before comparing it so the comparison
+ * follows the same slug rules used throughout Whusup.
+ */
+$requestedSlug = trim((string) ($_GET['slug'] ?? ''));
+
+$normalizedRequestedSlug = $requestedSlug !== ''
+    ? makePostSlug($requestedSlug)
+    : '';
+
+if ($normalizedRequestedSlug !== $postSlug) {
+    header('Location: ' . $canonicalUrl, true, 301);
+    exit;
+}
 
 /*
  * Use the first gallery image for social previews.
@@ -126,23 +150,47 @@ $firstImageUrl = !empty($imageKeys[0])
     : null;
 
 /*
- * Build a clean search-engine description from the post text.
+ * Build the primary meta description from the body.
+ *
+ * The body normally provides better descriptive context than the title
+ * or tag. Older/casual posts still receive sensible fallbacks.
  */
 $pageDescription = cleanMetaText($postBody, 180);
 
 if ($pageDescription === '') {
-    $pageDescription = $postTag !== ''
-        ? 'View this ' . $postTag . ' post and join the conversation on Whusup.'
-        : 'View this post and join the conversation on Whusup.';
+    if ($postTitle !== '') {
+        $pageDescription =
+            'Read "' .
+            cleanMetaText($postTitle, 120) .
+            '" and join the conversation on Whusup.';
+    } elseif ($postTag !== '') {
+        $pageDescription =
+            'View this ' .
+            cleanMetaText($postTag, 60) .
+            ' post and join the conversation on Whusup.';
+    } else {
+        $pageDescription =
+            'View this post and join the conversation on Whusup.';
+    }
 }
 
 /*
- * Use the tag prominently in the browser title and social preview.
+ * Build the browser title and social title.
  *
- * Example:
- * Gilroy Gardens on Whusup
+ * SEO title priority:
+ * 1. Post title
+ * 2. Tag
+ * 3. Post body
+ * 4. Generic Whusup post title
  */
-if ($postTag !== '') {
+if ($postTitle !== '') {
+    $cleanPostTitle = cleanMetaText($postTitle, 100);
+
+    $pageTitle = $cleanPostTitle . ' | Whusup';
+    $ogTitle = $cleanPostTitle;
+    $ogDescription = $pageDescription;
+
+} elseif ($postTag !== '') {
     $cleanTag = cleanMetaText($postTag, 60);
 
     $pageTitle = $cleanTag . ' on Whusup';
@@ -153,6 +201,7 @@ if ($postTag !== '') {
         $cleanTag .
         ' post shared on Whusup. ' .
         $pageDescription;
+
 } else {
     $postTitleText = cleanMetaText($postBody, 70);
 
@@ -177,9 +226,20 @@ $ogType = 'article';
 
 $ogImage = $firstImageUrl;
 
-$ogImageAlt = $postTag !== ''
-    ? $postTag . ' post shared on Whusup'
-    : 'Post shared on Whusup';
+/*
+ * Give social-preview images useful alternative text.
+ */
+if ($postTitle !== '') {
+    $ogImageAlt =
+        cleanMetaText($postTitle, 120) .
+        ' — post shared on Whusup';
+} elseif ($postTag !== '') {
+    $ogImageAlt =
+        cleanMetaText($postTag, 80) .
+        ' post shared on Whusup';
+} else {
+    $ogImageAlt = 'Post shared on Whusup';
+}
 
 $twitterCard = !empty($ogImage)
     ? 'summary_large_image'
@@ -214,15 +274,29 @@ $postModifiedDate = !empty($postModifiedSource)
     : $postPublishedDate;
 
 /*
+ * Build the Schema.org headline.
+ *
+ * Structured-data headline priority:
+ * title -> body -> tag -> generic fallback
+ */
+if ($postTitle !== '') {
+    $structuredHeadline = cleanMetaText($postTitle, 110);
+} elseif ($postBody !== '') {
+    $structuredHeadline = cleanMetaText($postBody, 110);
+} elseif ($postTag !== '') {
+    $structuredHeadline = cleanMetaText($postTag, 110);
+} else {
+    $structuredHeadline = 'Post on Whusup';
+}
+
+/*
  * Build Schema.org structured data for this post.
  */
 $structuredData = [
     '@context' => 'https://schema.org',
     '@type' => 'SocialMediaPosting',
 
-    'headline' => $postTag !== ''
-        ? cleanMetaText($postTag, 110)
-        : cleanMetaText($postBody, 110),
+    'headline' => $structuredHeadline,
 
     'articleBody' => cleanMetaText($postBody, 5000),
 
@@ -231,7 +305,7 @@ $structuredData = [
 
     'author' => [
         '@type' => 'Person',
-        'name' => ucwords($postAuthor),
+        'name' => $postAuthor,
     ],
 
     'mainEntityOfPage' => [
