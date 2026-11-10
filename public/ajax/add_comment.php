@@ -50,7 +50,7 @@ if ($post_id <= 0 || $comment_body === '') {
 |
 */
 
-$shouldSendFirstCommentEmail = false;
+$notificationType = null; // 'main_comment' or 'first_reply'
 
 $post = null;
 $commenter = null;
@@ -135,69 +135,57 @@ try {
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Validate parent comment
-    |--------------------------------------------------------------------------
-    |
-    | If this is a reply, make sure the parent comment exists and belongs
-    | to the same post.
-    |
-    */
+     * The post row is locked for this transaction, serializing comment
+     * creation on the same post and preventing duplicate first-reply emails.
+     */
+    $parentComment = null;
+    $mainCommentCountBefore = null;
+    $parentAlreadyHasReplies = false;
 
     if ($parent_comment_id !== null) {
-
         $stmt = $pdo->prepare("
-            SELECT id
-            FROM post_comments
-            WHERE id = :parent_comment_id
-            AND post_id = :post_id
+            SELECT c.id, c.user_id, c.parent_comment_id,
+                   u.email, up.display_name,
+                   COALESCE(up.allow_email_notifications, 0) AS allow_email_notifications
+            FROM post_comments c
+            JOIN users u ON u.id = c.user_id
+            LEFT JOIN user_profiles up ON up.user_id = c.user_id
+            WHERE c.id = :parent_comment_id AND c.post_id = :post_id
             LIMIT 1
         ");
-
         $stmt->execute([
             ':parent_comment_id' => $parent_comment_id,
             ':post_id' => $post_id
         ]);
+        $parentComment = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
-
+        if (!$parentComment) {
             $pdo->rollBack();
-
-            echo json_encode([
-                'success' => false,
-                'message' => 'Parent comment not found.'
-            ]);
-
+            echo json_encode(['success' => false, 'message' => 'Parent comment not found.']);
             exit;
         }
+
+        // Only a direct reply to a MAIN comment can trigger an email.
+        if ($parentComment['parent_comment_id'] === null) {
+            $stmt = $pdo->prepare("
+                SELECT EXISTS(
+                    SELECT 1 FROM post_comments
+                    WHERE parent_comment_id = :parent_comment_id
+                    LIMIT 1
+                )
+            ");
+            $stmt->execute([':parent_comment_id' => $parent_comment_id]);
+            $parentAlreadyHasReplies = (bool) $stmt->fetchColumn();
+        }
+    } else {
+        // Count only top-level comments, not replies. Count self-comments too.
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) FROM post_comments
+            WHERE post_id = :post_id AND parent_comment_id IS NULL
+        ");
+        $stmt->execute([':post_id' => $post_id]);
+        $mainCommentCountBefore = (int) $stmt->fetchColumn();
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Determine whether this will be the first comment
-    |--------------------------------------------------------------------------
-    |
-    | We only need to know whether at least one comment already exists.
-    | EXISTS is cheaper and clearer than counting every comment.
-    |
-    */
-
-    $stmt = $pdo->prepare("
-        SELECT EXISTS(
-            SELECT 1
-            FROM post_comments
-            WHERE post_id = :post_id
-            LIMIT 1
-        )
-    ");
-
-    $stmt->execute([
-        ':post_id' => $post_id
-    ]);
-
-    $postAlreadyHasComments =
-        (bool) $stmt->fetchColumn();
 
 
     /*
@@ -264,58 +252,36 @@ try {
 
 
     /*
-    |--------------------------------------------------------------------------
-    | Determine first-comment email eligibility
-    |--------------------------------------------------------------------------
-    |
-    | Send only when:
-    |
-    | 1. No comment existed before this one.
-    | 2. The commenter is not the post owner.
-    | 3. The post owner allows email notifications.
-    | 4. The post owner has a valid email address.
-    |
-    */
+     * Select notification eligibility while the post lock is held.
+     * An email failure never changes the comment insert result.
+     */
+    $commenterId = (string) $user_id;
 
-    $postOwnerId =
-        (string) ($post['post_owner_id'] ?? '');
-
-    $commenterId =
-        (string) $user_id;
-
-    $ownerAllowsEmail =
-        (int) ($post['allow_email_notifications'] ?? 0) === 1;
-
-    $ownerEmail =
-        trim((string) ($post['email'] ?? ''));
-
-    $isOwnPost =
-        $postOwnerId !== ''
-        && hash_equals(
-            $postOwnerId,
-            $commenterId
-        );
-
-    if (
-        !$postAlreadyHasComments
-        && !$isOwnPost
-        && $ownerAllowsEmail
-        && filter_var(
-            $ownerEmail,
-            FILTER_VALIDATE_EMAIL
-        )
+    if ($parent_comment_id === null) {
+        if (
+            $mainCommentCountBefore < 3
+            && (string) $post['post_owner_id'] !== $commenterId
+            && (int) $post['allow_email_notifications'] === 1
+            && filter_var((string) $post['email'], FILTER_VALIDATE_EMAIL)
+        ) {
+            $notificationType = 'main_comment';
+            $recipient = [
+                'email' => trim((string) $post['email']),
+                'display_name' => trim((string) ($post['owner_display_name'] ?? ''))
+            ];
+        }
+    } elseif (
+        $parentComment !== null
+        && $parentComment['parent_comment_id'] === null
+        && !$parentAlreadyHasReplies
+        && (string) $parentComment['user_id'] !== $commenterId
+        && (int) $parentComment['allow_email_notifications'] === 1
+        && filter_var((string) $parentComment['email'], FILTER_VALIDATE_EMAIL)
     ) {
-        $shouldSendFirstCommentEmail = true;
-
+        $notificationType = 'first_reply';
         $recipient = [
-            'email' => $ownerEmail,
-
-            'display_name' => trim(
-                (string) (
-                    $post['owner_display_name']
-                    ?? ''
-                )
-            )
+            'email' => trim((string) $parentComment['email']),
+            'display_name' => trim((string) ($parentComment['display_name'] ?? ''))
         ];
     }
 
@@ -355,7 +321,7 @@ try {
 
 /*
 |--------------------------------------------------------------------------
-| Send first-comment notification
+| Send eligible comment notification
 |--------------------------------------------------------------------------
 |
 | Notification delivery happens only after the comment transaction has
@@ -365,7 +331,7 @@ try {
 */
 
 if (
-    $shouldSendFirstCommentEmail
+    $notificationType !== null
     && $recipient !== null
     && $commenter !== null
     && $post !== null
@@ -406,8 +372,9 @@ if (
          * Send the notification.
          */
 
-        sendFirstCommentNotification(
+        sendCommentActivityNotification(
             $ses,
+            $notificationType,
             $recipient,
             $commenter,
             $emailPost,
@@ -426,7 +393,7 @@ if (
          */
 
         error_log(
-            'First-comment notification email failed for post '
+            'Comment notification email failed for post '
             . $post_id
             . ': '
             . $e->getMessage()
