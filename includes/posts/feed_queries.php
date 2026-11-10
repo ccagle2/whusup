@@ -38,11 +38,34 @@ if (!empty($where_parts)) {
 
 if ($sort === 'popular') {
     $order_sql = "
-        ORDER BY popularity_score DESC, latest_activity_at DESC
+        ORDER BY
+            (
+                (
+                    (COUNT(DISTINCT post_likes.id) * 3) +
+                    (COUNT(DISTINCT post_comments.id) * 4) +
+                    (COALESCE(posts.view_count, 0) * 0.10)
+                )
+                /
+                POW(
+                    1 + (
+                        GREATEST(
+                            TIMESTAMPDIFF(
+                                HOUR,
+                                posts.created_at,
+                                NOW()
+                            ),
+                            0
+                        ) / 24.0
+                    ),
+                    1.5
+                )
+            ) DESC,
+            latest_activity_at DESC,
+            posts.id DESC
     ";
 } else {
     $order_sql = "
-        ORDER BY latest_activity_at DESC
+        ORDER BY latest_activity_at DESC, posts.id DESC
     ";
 }
 

@@ -360,7 +360,7 @@ include __DIR__ . '/post_styles.php';
             href="<?= htmlspecialchars(currentPostsUrl('popular')) ?>"
             class="sort-button <?= $sort === 'popular' ? 'active' : '' ?>"
         >
-            Popular
+            Trending
         </a>
 
         <div class="trending-sort-control" id="trendingSortControl">
