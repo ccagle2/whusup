@@ -21,6 +21,7 @@ $tagInput = trim($_GET['tag'] ?? '');
 if ($tagInput === '') {
     http_response_code(404);
     $pageTitle = "Tag Not Found | Whusup";
+    $robotsMeta = 'noindex, follow';
     include '../includes/header.php';
     include '../includes/navbar.php';
     echo '<main class="recent-posts-wrapper"><h1>Tag not found</h1></main>';
@@ -33,6 +34,7 @@ $tag = findRealTagFromSlug($pdo, $tagInput);
 if ($tag === null) {
     http_response_code(404);
     $pageTitle = "Tag Not Found | Whusup";
+    $robotsMeta = 'noindex, follow';
     include '../includes/header.php';
     include '../includes/navbar.php';
     echo '<main class="recent-posts-wrapper"><h1>Tag not found</h1></main>';
@@ -52,19 +54,23 @@ $pageTitle = cleanMetaText($tag, 50) . " Posts | Whusup";
 $pageDescription = "Posts tagged " . cleanMetaText($tag, 80) . " on Whusup.";
 $canonicalUrl = "https://whusup.com/tag/" . rawurlencode($tagSlug);
 
+// Keep social-preview metadata consistent with this specific tag page.
+$ogTitle = $pageTitle;
+$ogDescription = $pageDescription;
+$ogUrl = $canonicalUrl;
+$ogType = 'website';
+$twitterTitle = $pageTitle;
+$twitterDescription = $pageDescription;
+
 $redirect_url = "/tag/" . rawurlencode($tagSlug);
 
 require __DIR__ . '/../includes/posts/delete_post_handler.php';
 
+// header.php outputs the title, description, canonical URL and social metadata.
 include '../includes/header.php';
+include '../includes/navbar.php';
+include '../includes/posts/post_styles.php';
 ?>
-
-<title><?= htmlspecialchars($pageTitle) ?></title>
-<meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
-<link rel="canonical" href="<?= htmlspecialchars($canonicalUrl) ?>">
-
-<?php include '../includes/navbar.php'; ?>
-<?php include '../includes/posts/post_styles.php'; ?>
 
 <main class="recent-posts-wrapper">
 

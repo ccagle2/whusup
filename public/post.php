@@ -179,8 +179,8 @@ if ($pageDescription === '') {
  *
  * SEO title priority:
  * 1. Post title
- * 2. Tag
- * 3. Post body
+ * 2. Post body
+ * 3. Tag
  * 4. Generic Whusup post title
  */
 if ($postTitle !== '') {
@@ -188,6 +188,19 @@ if ($postTitle !== '') {
 
     $pageTitle = $cleanPostTitle . ' | Whusup';
     $ogTitle = $cleanPostTitle;
+    $ogDescription = $pageDescription;
+
+} elseif ($postBody !== '') {
+    $postTitleText = cleanMetaText($postBody, 70);
+
+    $pageTitle = $postTitleText !== ''
+        ? $postTitleText . ' | Whusup'
+        : 'Post on Whusup';
+
+    $ogTitle = $postTitleText !== ''
+        ? $postTitleText
+        : 'Post on Whusup';
+
     $ogDescription = $pageDescription;
 
 } elseif ($postTag !== '') {
@@ -203,16 +216,8 @@ if ($postTitle !== '') {
         $pageDescription;
 
 } else {
-    $postTitleText = cleanMetaText($postBody, 70);
-
-    $pageTitle = $postTitleText !== ''
-        ? $postTitleText . ' | Whusup'
-        : 'Post on Whusup';
-
-    $ogTitle = $postTitleText !== ''
-        ? $postTitleText
-        : 'Post on Whusup';
-
+    $pageTitle = 'Post on Whusup';
+    $ogTitle = 'Post on Whusup';
     $ogDescription = $pageDescription;
 }
 

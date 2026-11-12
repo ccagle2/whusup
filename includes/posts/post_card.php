@@ -477,6 +477,24 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
         display: none;
     }
 
+    /* Preserve the existing title appearance while linking titled posts. */
+    .recent-post-title .post-title-link {
+        color: inherit;
+        font: inherit;
+        text-decoration: none;
+    }
+
+    .recent-post-title .post-title-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    .recent-post-title .post-title-link:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 3px;
+        border-radius: 3px;
+    }
+
     .edit-post-field {
         margin-bottom: 0.8rem;
     }
@@ -1077,9 +1095,16 @@ if (empty($render_single_post_card)) {
                     </a>
                 </div>
 
-                <div class="recent-post-title<?= $postTitle === '' ? ' is-empty' : '' ?>">
-                    <?= htmlspecialchars($postTitle) ?>
-                </div>
+                <?php if ($postTitle !== ''): ?>
+                    <div class="recent-post-title">
+                        <a
+                            href="<?= htmlspecialchars($postSharePath, ENT_QUOTES, 'UTF-8') ?>"
+                            class="post-title-link"
+                        >
+                            <?= htmlspecialchars($postTitle, ENT_QUOTES, 'UTF-8') ?>
+                        </a>
+                    </div>
+                <?php endif; ?>
 
                 <div class="recent-post-text-wrapper<?= $isLongPostBody ? ' is-collapsible' : '' ?>">
                     <div

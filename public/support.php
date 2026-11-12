@@ -299,11 +299,11 @@ body > .footer-custom {
             <div class="support-lead">
 
                 <p>
-                    Believe it or not Whusup makes absolutely no money. 
-                    However if you want to bring the platform to new heights, 
-                    please consider an optional contribution. We pour 100% of contributions 
-                    directly back into the platform for things like server and infrastructure 
-                    costs and software development. 
+                    Like what you see? Consider supporting us. 
+                </p>
+                <p>
+                    We run no ads or paid for content and are 100% supported by our user base.
+                    We put any and all support directly to the cost of running the site and feature enhancement.
                 </p>
 
             </div>

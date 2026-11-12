@@ -763,28 +763,18 @@ body > .footer-custom {
 
             <p class="about-lead">
                 <p>
-                Doesn't whusup sound stupid?  Well we couldn't get whatsup.com so 
-                we had to settle for the next best thing :)
-                We created whusup as a completely ad free social media platform 
-                where you can share content and follow friends. 
-                While social media is widespread, most of it is run by giant coporations 
-                that pay employees millions of dollars for nothing more than to hook you to their site 
-                while spamming you with as much advertising as possible so their executives can own big houses and yachts. 
+                Whusup is a home grown social media site with no ads, no paid for content and no algorithms 
+                trying to hook you to the site. What you see here is what you get and it's 100% user driven. 
+                We are proud to have absolutely no corporate or big tech backing. 
                 </p>
                 <p>
-                Whusup is a growing platform that was just started out of the San Francisco Bay Area in 2026. 
-                We are only funded by user support, but if we don't get a dime of support we will keep the platform 
-                going either way. 
+                The only rules on the site are no porn, no threats or violence and no malicious links. 
+                Basically don't hurt other people. 
+                Other than that, everything is free game and your posts aren't going to get removed because some 
+                group admin keyboard warrior disagrees with you.
                 </p>
                 <p>
-                We have no corporate oversight, there are absolutely no plans to ever incorporate advertising or paid 
-                promotions on the site, and the filters are simple so what you see is what you get. There are no gimmicks
-                or back end algorithms to hook you to the site. On top of this any personal data is secure and will never be 
-                shared. Post data is public as the site is meant to be a public facing site so keep that in mind.
-                </p>
-                <p>
-                If you like it, please use it and tell all your friends!
-                We are working hard to bring constant enhancements to this site for a better and better experience. 
+                Sign up and start sharing your killer content :)
                 </p>
             </p>
 
