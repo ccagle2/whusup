@@ -137,7 +137,7 @@ if (!empty($_SESSION['user_id'])) {
     }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 700px) {
     .guest-hero-card {
         width: 100vw;
         max-width: none;
@@ -201,8 +201,8 @@ if (!empty($_SESSION['user_id'])) {
             <h1>What's up?</h1>
 
             <p>
-                Talk about anything.<br>
-                No ads. No big tech. No AI.
+                Share what's on your mind.<br>
+                Sign up to start posting.
             </p>
         </div>
 

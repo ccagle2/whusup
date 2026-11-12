@@ -207,7 +207,7 @@
         height: 444px;
         min-height: 444px;
         max-height: 444px;
-        margin: 10px 0 13px;
+        margin: 20px 0 3px;
         padding: 0;
         overflow: hidden;
         box-sizing: border-box;
@@ -910,9 +910,14 @@ body.lightbox-open {
     }
 
     .recent-post-card {
-        border-radius: 14px;
-        padding: 18px;
+        width: 100vw;
+        max-width: none;
+        box-sizing: border-box;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
         margin-bottom: 18px;
+        border-radius: 0;
+        padding: 18px;
     }
 
     .profile-emblem {

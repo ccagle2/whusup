@@ -9,10 +9,10 @@ if (session_status() === PHP_SESSION_NONE) {
  * Individual pages such as post.php can define these variables
  * before including header.php.
  */
-$pageTitle = $pageTitle ?? 'Social Media';
+$pageTitle = $pageTitle ?? 'Whusup | Vintage Internet';
 
 $pageDescription = $pageDescription
-    ?? 'Join Whusup to share updates, connect with friends, discover trending discussions, and build your community.';
+    ?? 'Whusup is a social media and social networking platform where you can share posts and photos, follow friends, discover discussions, and connect with real people.';
 
 $canonicalUrl = $canonicalUrl
     ?? 'https://whusup.com';
@@ -20,16 +20,16 @@ $canonicalUrl = $canonicalUrl
 $robotsMeta = $robotsMeta
     ?? 'index, follow';
 
-$ogTitle = $ogTitle ?? 'Whusup Social Media';
+$ogTitle = $ogTitle ?? 'Whusup | Vintage Internet';
 
 $ogDescription = $ogDescription
-    ?? 'Connect with friends without ads or spam.';
+    ?? 'Whusup is a social media platform where you can share posts and photos, follow friends, and discover conversations.';
 
 $ogImage = $ogImage
     ?? 'https://whusup.com/assets/preview-image.jpg';
-    
+
 $ogImageAlt = $ogImageAlt
-    ?? 'Whusup social media preview';
+    ?? 'Whusup social media platform preview';
 
 $ogUrl = $ogUrl
     ?? 'https://whusup.com';
@@ -41,10 +41,10 @@ $twitterCard = $twitterCard
     ?? 'summary_large_image';
 
 $twitterTitle = $twitterTitle
-    ?? 'Whusup Social Media';
+    ?? 'Whusup | Vintage Internet';
 
 $twitterDescription = $twitterDescription
-    ?? "Connect with friends and see what's happening.";
+    ?? 'Whusup is a social media platform for sharing posts and photos, following friends, and discovering conversations.';
 
 $twitterImage = $twitterImage
     ?? 'https://whusup.com/assets/preview-image.jpg';
@@ -111,7 +111,7 @@ $twitterImage = $twitterImage
       "@type":"WebSite",
       "name":"Whusup",
       "url":"https://whusup.com",
-      "description":"Connect, share and discover topics of interest.",
+      "description":"Whusup is a social media and social networking platform where people share posts and photos, follow friends, discover discussions, and connect with others."
       "publisher":{
         "@type":"Organization",
         "name":"Whusup"

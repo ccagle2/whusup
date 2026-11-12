@@ -5,6 +5,10 @@ require_once '../config/database.php';
 
 require_login();
 
+$pageTitle = 'Dashboard | Whusup';
+$canonicalUrl = 'https://whusup.com/dashboard.php';
+$robotsMeta = 'noindex, follow';
+
 include '../includes/header.php';
 include '../includes/navbar.php';
 

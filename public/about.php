@@ -412,30 +412,6 @@ $canonicalUrl = 'https://whusup.com/about.php';
 include '../includes/header.php';
 ?>
 
-<title><?= htmlspecialchars(
-    $pageTitle,
-    ENT_QUOTES,
-    'UTF-8'
-) ?></title>
-
-<meta
-    name="description"
-    content="<?= htmlspecialchars(
-        $pageDescription,
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
->
-
-<link
-    rel="canonical"
-    href="<?= htmlspecialchars(
-        $canonicalUrl,
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
->
-
 <?php include '../includes/navbar.php'; ?>
 
 <style>

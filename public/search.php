@@ -200,6 +200,8 @@ $pageDescription = $searchIsValid
 $canonicalUrl = 'https://whusup.com/search.php'
     . ($searchIsValid ? '?q=' . urlencode($q) : '');
 
+$robotsMeta = 'noindex, follow';
+
 /*
 |--------------------------------------------------------------------------
 | Load capped people, topic, and post results
@@ -246,21 +248,7 @@ $redirect_url = '/search.php' .
 require __DIR__ . '/../includes/posts/delete_post_handler.php';
 
 include '../includes/header.php';
-?>
 
-<title><?= htmlspecialchars($pageTitle) ?></title>
-
-<meta
-    name="description"
-    content="<?= htmlspecialchars($pageDescription) ?>"
->
-
-<link
-    rel="canonical"
-    href="<?= htmlspecialchars($canonicalUrl) ?>"
->
-
-<?php
 include '../includes/navbar.php';
 include '../includes/posts/post_styles.php';
 ?>

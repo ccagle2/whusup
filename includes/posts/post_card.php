@@ -473,6 +473,13 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
         overflow-wrap: anywhere;
     }
 
+    /* Add breathing room above post titles on desktop only */
+@media (min-width: 701px) {
+    .recent-post-title {
+        margin-top: 1.5rem;
+    }
+}
+
     .recent-post-title.is-empty {
         display: none;
     }
@@ -556,6 +563,20 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
             return card ? String(card.dataset.postId || '') : '';
         }
 
+        // Show the expander only when the seven-line clamp hides content.
+        function updateExpanderVisibility(wrapper) {
+            const body = wrapper.querySelector('.recent-post-body');
+            const button = wrapper.querySelector('.recent-post-expand-button');
+            if (!body || !button || body.getClientRects().length === 0) return;
+
+            const wasExpanded = wrapper.classList.contains('is-expanded');
+            if (wasExpanded) wrapper.classList.remove('is-expanded');
+            const hasOverflow = body.scrollHeight > body.clientHeight + 1;
+            if (wasExpanded) wrapper.classList.add('is-expanded');
+
+            button.style.display = hasOverflow ? '' : 'none';
+        }
+
         function applySavedState(root) {
             const searchRoot = root instanceof Element || root instanceof Document
                 ? root
@@ -587,6 +608,7 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
                     button.textContent = expanded ? 'Show less' : 'Show more';
                     button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
                 }
+                updateExpanderVisibility(wrapper);
             });
         }
 
@@ -634,6 +656,17 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
 
         function startPostExpander() {
             applySavedState(document);
+
+            // Text wrapping changes with viewport width; check again after resize.
+            let resizeFrame = null;
+            window.addEventListener('resize', function () {
+                if (resizeFrame !== null) return;
+                resizeFrame = window.requestAnimationFrame(function () {
+                    resizeFrame = null;
+                    document.querySelectorAll('.recent-post-text-wrapper.is-collapsible')
+                        .forEach(updateExpanderVisibility);
+                });
+            });
 
             const observer = new MutationObserver(function (mutations) {
                 mutations.forEach(function (mutation) {
