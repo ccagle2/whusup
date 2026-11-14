@@ -252,18 +252,22 @@
         border-radius: var(--whusup-image-radius);
     }
 
+
     .recent-post-card .whusup-gallery-image,
     .recent-post-card .whusup-gallery-image.blurred-post-image {
-        width: 100%;
-        height: 100%;
+        display: block;
+        width: auto;
+        height: auto;
         min-width: 0;
         min-height: 0;
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
         object-position: center center;
+        border-radius: var(--whusup-image-radius);
         transform: none;
     }
+
 
     .recent-post-card .whusup-gallery-image.blurred-post-image {
         filter: blur(14px);

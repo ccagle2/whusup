@@ -84,13 +84,13 @@ html,
 body {
     margin: 0;
     padding: 0;
-    background: #f2f4f8;
+    background: #ffffff;
 }
 
 .auth-page {
     width: 100%;
     min-height: 100vh;
-    background: #f2f4f8;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;

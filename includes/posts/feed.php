@@ -477,7 +477,8 @@ include __DIR__ . '/post_styles.php';
                 $comments_by_post,
                 $post_images_by_post,
                 $user_id,
-                $is_logged_in
+                $is_logged_in,
+                true // Initial page only; AJAX batches use the default false.
             ) ?>
 
         <?php endif; ?>

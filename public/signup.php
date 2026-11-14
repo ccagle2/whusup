@@ -630,13 +630,13 @@ html,
 body {
     margin: 0;
     padding: 0;
-    background: #f2f4f8;
+    background: #ffffff;
 }
 
 .auth-page {
     width: 100%;
     min-height: 100vh;
-    background: #f2f4f8;
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -730,7 +730,9 @@ body {
 
 .auth-helper-text {
     color: #6b7280;
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: center;
 }
 
 .auth-divider {
@@ -868,7 +870,7 @@ body {
                             </div>
 
                             <div class="auth-helper-text mb-3" style="margin-top: -8px;">
-                                You can change your public display name after you sign up.
+                                You can change your public display name after signing up.
                             </div>
 
                             <div class="form-floating mb-3">
@@ -887,6 +889,10 @@ body {
                                     Email address
                                 </label>
 
+                            </div>
+
+                            <div class="auth-helper-text mb-3" style="margin-top: -8px;">
+                                Your email address is always private.
                             </div>
 
                             <div class="mb-3">

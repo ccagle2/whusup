@@ -36,6 +36,7 @@ if (!empty($where_parts)) {
     $where_sql = "WHERE " . implode(" AND ", $where_parts);
 }
 
+
 if ($sort === 'popular') {
     $order_sql = "
         ORDER BY
@@ -46,7 +47,7 @@ if ($sort === 'popular') {
                     (COALESCE(posts.view_count, 0) * 0.10)
                 )
                 /
-                POW(
+                (
                     1 + (
                         GREATEST(
                             TIMESTAMPDIFF(
@@ -55,9 +56,8 @@ if ($sort === 'popular') {
                                 NOW()
                             ),
                             0
-                        ) / 24.0
-                    ),
-                    1.5
+                        ) / 168.0
+                    )
                 )
             ) DESC,
             latest_activity_at DESC,

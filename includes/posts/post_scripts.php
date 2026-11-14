@@ -48,6 +48,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const normalizedIndex = ((nextIndex % slides.length) + slides.length) % slides.length;
 
+        // A carousel slide can be outside the browser's lazy-load viewport.
+        // Request the selected image immediately when the visitor navigates.
+        const selectedImage = slides[normalizedIndex].querySelector(".whusup-gallery-image");
+        if (selectedImage && selectedImage.loading === "lazy") {
+            selectedImage.loading = "eager";
+        }
+
         track.style.transform = "translateX(-" + (normalizedIndex * 100) + "%)";
         carousel.dataset.currentIndex = String(normalizedIndex);
 

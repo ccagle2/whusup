@@ -1,7 +1,7 @@
 <?php
 
 if (!function_exists('renderPostCards')) {
-function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post, $user_id = null, $is_logged_in = false) {
+function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post, $user_id = null, $is_logged_in = false, $prioritizeFirstImage = false) {
     ob_start();
     ?>
 
@@ -975,7 +975,7 @@ function renderPostCards($recent_posts, $comments_by_post, $post_images_by_post,
 
     <?php
 
-    foreach ($recent_posts as $post) {
+    foreach ($recent_posts as $postIndex => $post) {
         $render_single_post_card = true;
         include __FILE__;
     }
@@ -1089,7 +1089,8 @@ if (empty($render_single_post_card)) {
                             alt="Profile picture"
                             class="profile-emblem-image profile-expandable"
                             data-full-image="<?= htmlspecialchars($profileImageUrl) ?>"
-                            loading="eager"
+                            loading="lazy"
+                            decoding="async"
                         >
                     <?php else: ?>
                         <?= htmlspecialchars($first_letter) ?>
@@ -1173,7 +1174,13 @@ if (empty($render_single_post_card)) {
                         <div class="whusup-gallery-stage">
                             <div class="whusup-gallery-track">
                                 <?php foreach ($postImageKeys as $imageIndex => $postImageKey): ?>
-                                    <?php $postImageUrl = getS3ImageUrl($postImageKey); ?>
+                                    <?php
+                                        $postImageUrl = getS3ImageUrl($postImageKey);
+                                        // Only the initial page's first post image gets high priority.
+                                        $isPriorityImage = $prioritizeFirstImage
+                                            && $postIndex === 0
+                                            && $imageIndex === 0;
+                                    ?>
 
                                     <?php if (!empty($postImageUrl)): ?>
                                         <div class="whusup-gallery-slide">
@@ -1185,7 +1192,8 @@ if (empty($render_single_post_card)) {
                                                     data-post-id="<?= htmlspecialchars($post_id) ?>"
                                                     data-image-index="<?= htmlspecialchars($imageIndex) ?>"
                                                     data-full-image="<?= htmlspecialchars($postImageUrl) ?>"
-                                                    loading="eager"
+                                                    loading="<?= $isPriorityImage ? 'eager' : 'lazy' ?>"
+                                                    <?= $isPriorityImage ? 'fetchpriority="high"' : '' ?>
                                                     decoding="async"
                                                 >
                                             </div>

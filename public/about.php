@@ -739,16 +739,26 @@ body > .footer-custom {
 
             <p class="about-lead">
                 <p>
-                Whusup is a home grown social media site with no ads, no paid for content and no algorithms 
-                trying to hook you to the site. What you see here is what you get and it's 100% user driven. 
-                We are proud to have absolutely no corporate or big tech backing. 
+                Whusup is a public facing social media site with no ads, no paid for content and no complex algorithms 
+                attempting to hook you to the site. Instead of spending our time figuring out how to monetize your 
+                content, we spend our time adding features we believe you will like. 
                 </p>
+
                 <p>
-                The only rules on the site are no porn, no threats or violence and no malicious links. 
-                Basically don't hurt other people. 
-                Other than that, everything is free game and your posts aren't going to get removed because some 
-                group admin keyboard warrior disagrees with you.
+                We are proud to have no corporate or big tech backing. At the same time we take security seriously 
+                and have taken extensive steps to protect your private information such as email and private profile information. 
+                We will never expose or sell private information. 
                 </p>
+
+                <p>
+                The only rules on the site are no porn, no threats / violence and no malicious links. 
+                Basically don't hurt other people. 
+                Other than that, everything is free game and we highly encourage freedom of speech. Your account or post 
+                will not be removed because some admin or site owner doesn't like it - in fact groups are user generated and 
+                don't even have admins. If you want to start a group, simply tag your post with something unique and it will 
+                appear in the search results all grouped together. 
+                </p>
+
                 <p>
                 Sign up and start sharing your killer content :)
                 </p>
@@ -763,7 +773,7 @@ body > .footer-custom {
             </h2>
 
             <p class="feedback-intro">
-                Does something suck? Let us know. 
+                Does something suck or is there a new feature you would like? Let us know. 
             </p>
 
             <?php if ($feedbackSuccess !== ''): ?>

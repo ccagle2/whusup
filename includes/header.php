@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
  * Individual pages such as post.php can define these variables
  * before including header.php.
  */
-$pageTitle = $pageTitle ?? 'Whusup | Vintage Internet';
+$pageTitle = $pageTitle ?? 'Whusup | Social Media';
 
 $pageDescription = $pageDescription
     ?? 'Whusup is a social media and social networking platform where you can share posts and photos, follow friends, discover discussions, and connect with real people.';
@@ -20,7 +20,7 @@ $canonicalUrl = $canonicalUrl
 $robotsMeta = $robotsMeta
     ?? 'index, follow';
 
-$ogTitle = $ogTitle ?? 'Whusup | Vintage Internet';
+$ogTitle = $ogTitle ?? 'Whusup | Social Media';
 
 $ogDescription = $ogDescription
     ?? 'Whusup is a social media platform where you can share posts and photos, follow friends, and discover conversations.';
@@ -41,7 +41,7 @@ $twitterCard = $twitterCard
     ?? 'summary_large_image';
 
 $twitterTitle = $twitterTitle
-    ?? 'Whusup | Vintage Internet';
+    ?? 'Whusup | Social Media';
 
 $twitterDescription = $twitterDescription
     ?? 'Whusup is a social media platform for sharing posts and photos, following friends, and discovering conversations.';
@@ -105,19 +105,21 @@ $twitterImage = $twitterImage
     <link rel="icon" sizes="192x192" href="/assets/favicon-192.png">
     <link rel="apple-touch-icon" href="/assets/favicon-180.png">
     
+
     <script type="application/ld+json">
     {
-      "@context":"https://schema.org",
-      "@type":"WebSite",
-      "name":"Whusup",
-      "url":"https://whusup.com",
-      "description":"Whusup is a social media and social networking platform where people share posts and photos, follow friends, discover discussions, and connect with others."
-      "publisher":{
-        "@type":"Organization",
-        "name":"Whusup"
-      }
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Whusup",
+    "url": "https://whusup.com",
+    "description": "Whusup is a social media and social networking platform where people share posts and photos, follow friends, discover discussions, and connect with others.",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Whusup"
+    }
     }
     </script>
+
   </head>
  
 <body class="d-flex flex-column min-vh-100">

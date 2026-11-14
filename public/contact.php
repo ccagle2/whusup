@@ -1,163 +1,150 @@
+
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$pageTitle = 'Contact | Whusup';
+$metaDescription = 'Contact Whusup about account concerns, technical problems, inappropriate content, or other issues requiring attention.';
 
 include '../includes/header.php';
 include '../includes/navbar.php';
 ?>
 
 <style>
-html,
-body {
-    margin: 0;
-    padding: 0;
-    background: #f2f4f8;
-}
+/* =========================================================
+   Contact Page
+   Clean, minimal layout consistent with Whusup
+   ========================================================= */
 
-.contact-page-wrapper {
+.whusup-contact-page {
     width: 100%;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0 20px;
-    margin: 0;
+    max-width: 950px;
+    margin: 0 auto;
+    padding: 38px 24px 65px;
     box-sizing: border-box;
-    background: #f2f4f8;
+    background: transparent;
 }
 
-.contact-card {
-    width: 100%;
-    max-width: 1100px;
-    background: #ffffff;
-    border-radius: 18px;
-    padding: 50px 60px;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.08);
-    text-align: center;
-}
-
-.contact-title {
+.whusup-contact-title {
     font-family: "Poppins", sans-serif;
-    font-size: 42px;
+    font-size: clamp(30px, 4vw, 40px);
     font-weight: 700;
     color: #111827;
-    margin-bottom: 25px;
-    letter-spacing: -0.8px;
+    margin: 0 0 24px;
+    letter-spacing: -0.6px;
 }
 
-.contact-text {
+.whusup-contact-text {
     font-family: "Poppins", Arial, sans-serif;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.8;
     color: #4b5563;
+    margin: 0 0 16px;
     max-width: 850px;
-    margin: 0 auto;
 }
 
-.contact-button-row {
-    margin-top: 40px;
+.whusup-contact-actions {
     display: flex;
-    justify-content: center;
+    align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+    margin-top: 28px;
 }
 
-.contact-button {
-    display: inline-block;
-    background: #ffffff;
-    color: #111827;
-    border: 1px solid #d1d5db;
+.whusup-contact-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 10px 24px;
+    border: 1px solid #d1d5db;
     border-radius: 999px;
+    background: transparent;
+    color: #111827;
+    font-family: "Poppins", Arial, sans-serif;
     font-size: 14px;
     font-weight: 700;
     text-decoration: none;
-    transition: 0.2s ease;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease;
 }
 
-.contact-button:hover {
+.whusup-contact-button:hover {
     background: #111827;
     color: #ffffff;
     border-color: #111827;
 }
 
-.contact-primary-button {
+.whusup-contact-primary {
     background: #111827;
     color: #ffffff;
     border-color: #111827;
 }
 
-.contact-primary-button:hover {
+.whusup-contact-primary:hover {
     background: #374151;
     border-color: #374151;
 }
 
-@media (max-width: 768px) {
-
-    .contact-page-wrapper {
-        align-items: center;
-        padding: 0 12px;
+@media (max-width: 700px) {
+    .whusup-contact-page {
+        padding: 26px 20px 45px;
     }
 
-    .contact-card {
-        padding: 32px 22px;
-        border-radius: 14px;
+    .whusup-contact-text {
+        font-size: 15px;
+        line-height: 1.75;
     }
 
-    .contact-title {
-        font-size: 30px;
+    .whusup-contact-actions {
+        gap: 10px;
     }
 
-    .contact-text {
-        font-size: 16px;
-        line-height: 1.7;
+    .whusup-contact-button {
+        padding: 10px 20px;
     }
-
-    .contact-button-row {
-        width: 100%;
-        flex-wrap: nowrap;
-    }
-
-    .contact-button {
-        flex: 1;
-        text-align: center;
-        padding: 10px 12px;
-    }
-
 }
 </style>
 
-<main class="contact-page-wrapper">
+<main class="whusup-contact-page">
 
-    <section class="contact-card">
+    <h1 class="whusup-contact-title">
+        Contact Whusup
+    </h1>
 
-        <h1 class="contact-title">
-            Contact Whusup
-        </h1>
+    <p class="whusup-contact-text">
+        Have a question, concern, or issue with Whusup?
+        We're here to help. Whether you're experiencing
+        a technical problem, need assistance with your
+        account, or want to report inappropriate content
+        or a security concern, please feel free to
+        reach out.
+    </p>
 
-        <div class="contact-text">
-            Have a question or concern? 
-            Feel free to email us and someone will get back with you. 
-        </div>
+    <p class="whusup-contact-text">
+        We review messages and will do our best to
+        respond to matters that require attention.
+    </p>
 
-        <div class="contact-button-row">
+    <div class="whusup-contact-actions">
 
-            <a 
-                href="mailto:caglenation@gmail.com?subject=Whusup%20Inquiry"
-                class="contact-button contact-primary-button"
-            >
-                Contact
-            </a>
+        <a
+            href="mailto:caglenation@gmail.com?subject=Whusup%20Inquiry"
+            class="whusup-contact-button whusup-contact-primary"
+        >
+            Send Email
+        </a>
 
-            <a 
-                href="javascript:history.back()" 
-                class="contact-button"
-            >
-                Back
-            </a>
+        <a
+            href="/index.php"
+            class="whusup-contact-button"
+        >
+            Back to Home
+        </a>
 
-        </div>
-
-    </section>
+    </div>
 
 </main>
 

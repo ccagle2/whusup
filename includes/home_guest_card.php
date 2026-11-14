@@ -202,7 +202,7 @@ if (!empty($_SESSION['user_id'])) {
 
             <p>
                 Share what's on your mind.<br>
-                Sign up to start posting.
+                Tag a post to create a searchable group. 
             </p>
         </div>
 

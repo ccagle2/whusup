@@ -204,6 +204,7 @@ function dashboardUrl(
     justify-content: center;
 
     min-height: 40px;
+    width: 130px;
 
     padding: 9px 20px;
 
@@ -231,24 +232,24 @@ function dashboardUrl(
  * Main content-creation action.
  */
 .dashboard-post-button {
-    border: 1px solid #b91c1c;
+    border: 1px solid #B94B53;
 
-    background: #b91c1c;
+    background: #B94B53;
     color: #ffffff;
 
     box-shadow:
-        0 4px 10px rgba(185, 28, 28, 0.16);
+        0 4px 10px rgba(185, 75, 83, 0.16);
 }
 
 .dashboard-post-button:hover {
-    background: #991b1b;
-    border-color: #991b1b;
+    background: #A63E47;
+    border-color: #A63E47;
     color: #ffffff;
 
     transform: translateY(-1px);
 
     box-shadow:
-        0 6px 14px rgba(185, 28, 28, 0.2);
+        0 6px 14px rgba(185, 75, 83, 0.2);
 }
 
 
@@ -268,6 +269,23 @@ function dashboardUrl(
     color: #111827;
 
     transform: translateY(-1px);
+}
+
+/* Small, consistent icons for the two primary actions. */
+.dashboard-primary-button .dashboard-action-icon {
+    display: block;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.dashboard-primary-button {
+    gap: 8px;
 }
 
 
@@ -414,6 +432,7 @@ function dashboardUrl(
 
     .dashboard-primary-button {
         flex: 1 1 0;
+        width: auto;
 
         min-width: 0;
 
@@ -542,7 +561,11 @@ if ($page === 'social_feed'):
                         ) ?>"
                         class="dashboard-primary-button dashboard-post-button"
                     >
-                        Post
+                        <svg class="dashboard-action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L9 17l-4 1 1-4Z" />
+                        </svg>
+                        <span>Post</span>
                     </a>
 
                     <a
@@ -555,7 +578,13 @@ if ($page === 'social_feed'):
                         ) ?>"
                         class="dashboard-primary-button dashboard-follow-button"
                     >
-                        Follow
+                        <svg class="dashboard-action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        <span>Follow</span>
                     </a>
 
                 </div>

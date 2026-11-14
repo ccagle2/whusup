@@ -278,8 +278,8 @@ body > .footer-custom {
                     Like what you see? Consider supporting us. 
                 </p>
                 <p>
-                    We run no ads or paid for content and are 100% supported by our user base.
-                    We put any and all support directly to the cost of running the site and feature enhancement.
+                    We do not run ads or paid for content and are 100% supported by our user base.
+                    All support goes toward running the site and feature enhancement.
                 </p>
 
             </div>

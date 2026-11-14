@@ -86,9 +86,6 @@ $logo_href = $is_logged_in
 }
 
 .logo-social {
-    display: none;
-    display: none;
-
     margin-bottom: 6px;
     color: #111111;
     font-family: "Poppins", sans-serif;
