@@ -12,6 +12,27 @@ if (!function_exists('getS3ImageUrl')) {
     }
 }
 
+/** WebP feed delivery switch. Enable only after CloudFront and upload tests. */
+if (!defined('WHUSUP_WEBP_FEED_ENABLED')) {
+    define('WHUSUP_WEBP_FEED_ENABLED', true);
+}
+
+if (!function_exists('whusupFeedWebpKey')) {
+    function whusupFeedWebpKey(?string $originalKey): ?string {
+        if (!$originalKey || !preg_match('~^posts/([a-f0-9]{32})\.(?:jpe?g|png|webp|gif)$~i', $originalKey, $matches)) {
+            return null;
+        }
+        return 'posts/feed/' . strtolower($matches[1]) . '.webp';
+    }
+}
+
+if (!function_exists('whusupFeedImageUrl')) {
+    function whusupFeedImageUrl(?string $originalKey): ?string {
+        $webpKey = WHUSUP_WEBP_FEED_ENABLED ? whusupFeedWebpKey($originalKey) : null;
+        return getS3ImageUrl($webpKey ?? $originalKey);
+    }
+}
+
 if (!function_exists('timeAgo')) {
     function timeAgo($datetime) {
         $time = strtotime($datetime);

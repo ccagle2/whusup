@@ -94,7 +94,7 @@ if (
             error_log('Could not load post images for delete: ' . $e->getMessage());
         }
 
-        if (empty($imageKeysToDelete) && !empty($postToDelete['image_key'])) {
+        if (!empty($postToDelete['image_key'])) {
             $imageKeysToDelete[] = $postToDelete['image_key'];
         }
 
@@ -120,18 +120,20 @@ if (
         }
 
         foreach ($imageKeysToDelete as $deleteImageKey) {
-            try {
-                $s3->deleteObject([
-                    'Bucket' => $s3Bucket,
-                    'Key' => $deleteImageKey
-                ]);
-            } catch (Throwable $e) {
-                error_log(
-                    'S3 image delete failed for key "' .
-                    $deleteImageKey .
-                    '": ' .
-                    $e->getMessage()
-                );
+            $keysToRemove = [$deleteImageKey];
+            $variantKey = whusupFeedWebpKey($deleteImageKey);
+            if ($variantKey !== null) {
+                $keysToRemove[] = $variantKey;
+            }
+            foreach ($keysToRemove as $s3Key) {
+                try {
+                    $s3->deleteObject([
+                        'Bucket' => $s3Bucket,
+                        'Key' => $s3Key
+                    ]);
+                } catch (Throwable $e) {
+                    error_log('S3 image delete failed for key "' . $s3Key . '": ' . $e->getMessage());
+                }
             }
         }
 

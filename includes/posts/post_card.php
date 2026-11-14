@@ -1176,6 +1176,7 @@ if (empty($render_single_post_card)) {
                                 <?php foreach ($postImageKeys as $imageIndex => $postImageKey): ?>
                                     <?php
                                         $postImageUrl = getS3ImageUrl($postImageKey);
+                                        $feedImageUrl = whusupFeedImageUrl($postImageKey);
                                         // Only the initial page's first post image gets high priority.
                                         $isPriorityImage = $prioritizeFirstImage
                                             && $postIndex === 0
@@ -1186,7 +1187,7 @@ if (empty($render_single_post_card)) {
                                         <div class="whusup-gallery-slide">
                                             <div class="whusup-gallery-frame">
                                                 <img
-                                                    src="<?= htmlspecialchars($postImageUrl) ?>"
+                                                    src="<?= htmlspecialchars($feedImageUrl) ?>"
                                                     alt="Post image <?= htmlspecialchars($imageIndex + 1) ?>"
                                                     class="whusup-gallery-image"
                                                     data-post-id="<?= htmlspecialchars($post_id) ?>"

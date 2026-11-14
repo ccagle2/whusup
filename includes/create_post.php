@@ -5,6 +5,7 @@ require_login();
 
 require_once '../config/database.php';
 require_once '../includes/s3_upload.php';
+require_once __DIR__ . '/posts/post_helpers.php';
 
 $awsConfig = require '../config/aws.php';
 
@@ -322,6 +323,70 @@ function delete_s3_object_if_exists($s3, $bucket, $imageKey): void
     }
 }
 
+/** Generate a feed-sized WebP from the already-oriented compressed JPEG. */
+function whusupUploadFeedVariant($s3, string $bucket, string $originalKey, string $jpegPath): void
+{
+    $variantKey = whusupFeedWebpKey($originalKey);
+    if (!$s3 || $bucket === '' || $variantKey === null) {
+        throw new RuntimeException('WebP variant configuration is unavailable.');
+    }
+    $source = @imagecreatefromjpeg($jpegPath);
+    if (!$source) {
+        throw new RuntimeException('Unable to read compressed JPEG for WebP.');
+    }
+    try {
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $ratio = min(1.0, 960 / max($width, $height));
+        $newWidth = max(1, (int) round($width * $ratio));
+        $newHeight = max(1, (int) round($height * $ratio));
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        if (!$resized) {
+            throw new RuntimeException('Unable to allocate WebP image.');
+        }
+        try {
+            $white = imagecolorallocate($resized, 255, 255, 255);
+            imagefill($resized, 0, 0, $white);
+            if (!imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height)) {
+                throw new RuntimeException('Unable to resize WebP image.');
+            }
+            $tempPath = tempnam(sys_get_temp_dir(), 'whusup_webp_');
+            if ($tempPath === false) {
+                throw new RuntimeException('Unable to create WebP temporary file.');
+            }
+            try {
+                if (!imagewebp($resized, $tempPath, 80) || filesize($tempPath) === 0) {
+                    throw new RuntimeException('WebP encoding failed.');
+                }
+                $s3->putObject([
+                    'Bucket' => $bucket,
+                    'Key' => $variantKey,
+                    'SourceFile' => $tempPath,
+                    'ContentType' => 'image/webp',
+                    'CacheControl' => 'public, max-age=31536000, immutable',
+                    'ServerSideEncryption' => 'AES256',
+                ]);
+            } finally {
+                @unlink($tempPath);
+            }
+        } finally {
+            imagedestroy($resized);
+        }
+    } finally {
+        imagedestroy($source);
+    }
+}
+
+/** Remove the original and deterministic variant during failed post creation. */
+function whusupCleanupPostImage($s3, $bucket, string $originalKey): void
+{
+    delete_s3_object_if_exists($s3, $bucket, $originalKey);
+    $variantKey = whusupFeedWebpKey($originalKey);
+    if ($variantKey !== null) {
+        delete_s3_object_if_exists($s3, $bucket, $variantKey);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $submitted_token = $_POST['post_form_token'] ?? '';
@@ -442,11 +507,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $uploadResult = uploadToS3($compressedImage, 'posts');
 
-                if (file_exists($compressedImage['tmp_name'])) {
-                    unlink($compressedImage['tmp_name']);
-                }
-
                 if (!$uploadResult['success']) {
+                    @unlink($compressedImage['tmp_name']);
                     $message = $uploadResult['error'];
                     break;
                 }
@@ -455,16 +517,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uploadedImageKeys[] = $imageKey;
 
                 $moderationResult = imagePassesModeration($rekognition, $s3Bucket, $imageKey);
-
                 if (!$moderationResult['success'] || !$moderationResult['passed']) {
+                    @unlink($compressedImage['tmp_name']);
                     $message = $moderationResult['message'] ?: 'One of your images cannot be uploaded.';
+                    break;
+                }
+
+                try {
+                    whusupUploadFeedVariant($s3, (string) $s3Bucket, $imageKey, $compressedImage['tmp_name']);
+                } catch (Throwable $e) {
+                    error_log('WebP variant upload failed: ' . $e->getMessage());
+                    $message = 'Image optimization failed. Please try again.';
+                } finally {
+                    @unlink($compressedImage['tmp_name']);
+                }
+                if ($message !== '') {
                     break;
                 }
             }
 
             if ($message !== '') {
                 foreach ($uploadedImageKeys as $cleanupImageKey) {
-                    delete_s3_object_if_exists($s3, $s3Bucket, $cleanupImageKey);
+                    whusupCleanupPostImage($s3, $s3Bucket, $cleanupImageKey);
                 }
 
                 $uploadedImageKeys = [];
@@ -517,7 +591,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->rollBack();
 
                     foreach ($uploadedImageKeys as $cleanupImageKey) {
-                        delete_s3_object_if_exists($s3, $s3Bucket, $cleanupImageKey);
+                        whusupCleanupPostImage($s3, $s3Bucket, $cleanupImageKey);
                     }
                     $uploadedImageKeys = [];
 
@@ -611,7 +685,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 foreach ($uploadedImageKeys as $cleanupImageKey) {
-                    delete_s3_object_if_exists($s3, $s3Bucket, $cleanupImageKey);
+                    whusupCleanupPostImage($s3, $s3Bucket, $cleanupImageKey);
                 }
 
                 error_log('Post insert failed: ' . $e->getMessage());
