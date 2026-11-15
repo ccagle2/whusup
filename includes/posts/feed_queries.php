@@ -25,10 +25,16 @@ if ($feed_filter === 'my_posts' && $is_logged_in) {
     $params[':my_posts_user_id'] = $user_id;
 }
 
+
 if ($tag_search !== '') {
-    $where_parts[] = "LOWER(TRIM(posts.tag)) = LOWER(TRIM(:tag_search))";
+    $where_parts[] = "
+        LOWER(TRIM(LEADING '#' FROM TRIM(posts.tag))) =
+        LOWER(TRIM(LEADING '#' FROM TRIM(:tag_search)))
+    ";
+
     $params[':tag_search'] = $tag_search;
 }
+
 
 $where_sql = "";
 

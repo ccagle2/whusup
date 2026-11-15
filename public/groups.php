@@ -29,6 +29,19 @@ $ogType = 'website';
 $twitterTitle = $pageTitle;
 $twitterDescription = $pageDescription;
 
+// Directory sorting.
+$groups_sort = $_GET['sort'] ?? 'alphabetical';
+
+if (!is_string($groups_sort) ||
+    !in_array($groups_sort, ['alphabetical', 'most_posts', 'most_contributors'], true)) {
+    $groups_sort = 'alphabetical';
+}
+
+// Groups-only search. Keep the query short and treat it as plain text.
+$groups_search = $_GET['q'] ?? '';
+$groups_search = is_string($groups_search) ? trim($groups_search) : '';
+$groups_search = substr($groups_search, 0, 100);
+
 // Directory pagination.
 $groups_per_page = 24;
 
@@ -62,9 +75,16 @@ try {
      *
      * Fetch one additional group to detect the next page.
      */
+    // Choose only from predefined SQL ordering expressions.
+    $groups_order_by = match ($groups_sort) {
+        'most_posts' => 'post_count DESC, group_name ASC',
+        'most_contributors' => 'contributor_count DESC, group_name ASC',
+        default => 'group_name ASC',
+    };
+
     $sql = "
         SELECT
-            MIN(TRIM(tag)) AS group_name,
+            MIN(TRIM(LEADING '#' FROM TRIM(tag))) AS group_name,
             COUNT(*) AS post_count,
             COUNT(DISTINCT user_id) AS contributor_count,
             MAX(created_at) AS latest_post_at
@@ -72,19 +92,23 @@ try {
         FROM posts
 
         WHERE tag IS NOT NULL
-          AND TRIM(tag) <> ''
+        AND TRIM(LEADING '#' FROM TRIM(tag)) <> ''
 
-        GROUP BY LOWER(TRIM(tag))
+        GROUP BY LOWER(TRIM(LEADING '#' FROM TRIM(tag)))
 
         HAVING COUNT(*) >= 2
+          AND LOCATE(LOWER(:group_search), LOWER(MIN(TRIM(tag)))) > 0
 
         ORDER BY
-            group_name ASC
+            {$groups_order_by}
 
         LIMIT :group_limit OFFSET :group_offset
     ";
 
     $stmt = $pdo->prepare($sql);
+
+    // An empty search matches every qualifying group.
+    $stmt->bindValue(':group_search', $groups_search, PDO::PARAM_STR);
 
     $stmt->bindValue(
         ':group_limit',
@@ -131,10 +155,20 @@ $buildGroupUrl = static function (
 };
 
 // Build directory pagination links.
-$buildPageUrl = static function (int $page): string {
-    return '/groups.php?' . http_build_query([
+$buildPageUrl = static function (int $page) use ($groups_sort, $groups_search): string {
+    $query = [
         'page' => $page
-    ]);
+    ];
+
+    if ($groups_sort !== 'alphabetical') {
+        $query['sort'] = $groups_sort;
+    }
+
+    if ($groups_search !== '') {
+        $query['q'] = $groups_search;
+    }
+
+    return '/groups.php?' . http_build_query($query);
 };
 
 include '../includes/header.php';
@@ -344,6 +378,46 @@ include '../includes/navbar.php';
     font-size: 12px;
 }
 
+/* Search and sort controls */
+.whusup-groups-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    margin-bottom: 18px;
+}
+.whusup-groups-search,
+.whusup-groups-sort {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.whusup-groups-search { flex: 1 1 280px; min-width: 0; }
+.whusup-groups-search .form-control { min-width: 0; max-width: 360px; border-radius: 999px; }
+.whusup-groups-search .btn { border-radius: 999px; white-space: nowrap; }
+.whusup-groups-clear { font-size: 13px; color: #6b7280; }
+.whusup-groups-sort label { color: #6b7280; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.whusup-groups-sort .form-select { width: auto; max-width: 190px; border-radius: 999px; font-size: 13px; cursor: pointer; }
+
+@media (max-width: 600px) {
+    .whusup-groups-search {
+        flex-basis: 100%;
+        order: 2;
+    }
+
+    .whusup-groups-search .form-control {
+        flex: 1;
+        max-width: none;
+    }
+
+    .whusup-groups-sort {
+        margin-left: auto;
+        order: 1;
+    }
+}
+
+
 /* Larger, more readable group card typography on desktop */
 
 @media (min-width: 901px) {
@@ -439,9 +513,62 @@ include '../includes/navbar.php';
         </h1>
 
         <p class="whusup-groups-description">
-            Discover conversations and connect through shared interests.
+            Connect with others through shared interests.
         </p>
     </header>
+
+    <!-- Groups-only search and sorting -->
+    <form
+        method="GET"
+        action="/groups.php"
+        class="whusup-groups-controls"
+        role="search"
+        aria-label="Search groups"
+    >
+        <div class="whusup-groups-search">
+            <label for="groups-search" class="visually-hidden">Search groups</label>
+            <input
+                id="groups-search"
+                name="q"
+                type="search"
+                class="form-control"
+                placeholder="Search groups..."
+                value="<?= htmlspecialchars($groups_search, ENT_QUOTES, 'UTF-8') ?>"
+                maxlength="100"
+            >
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+            <?php if ($groups_search !== ''): ?>
+                <a href="<?= htmlspecialchars(
+                    '/groups.php' . ($groups_sort !== 'alphabetical'
+                        ? '?' . http_build_query(['sort' => $groups_sort])
+                        : ''),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
+                   class="whusup-groups-clear">Clear</a>
+            <?php endif; ?>
+        </div>
+
+        <div class="whusup-groups-sort">
+            <label for="groups-sort">Sort by</label>
+            <select
+                id="groups-sort"
+                name="sort"
+                class="form-select"
+                onchange="this.form.submit()"
+            >
+                <option value="alphabetical" <?= $groups_sort === 'alphabetical' ? 'selected' : '' ?>>
+                    Alphabetical (A-Z)
+                </option>
+                <option value="most_posts" <?= $groups_sort === 'most_posts' ? 'selected' : '' ?>>
+                    Most Posts
+                </option>
+                <option value="most_contributors" <?= $groups_sort === 'most_contributors' ? 'selected' : '' ?>>
+                    Most Contributors
+                </option>
+            </select>
+        </div>
+    </form>
 
     <?php if ($groups_error): ?>
 
@@ -456,7 +583,7 @@ include '../includes/navbar.php';
             <?php if ($current_page > 1): ?>
                 No more groups to show.
             <?php else: ?>
-                No groups available yet.
+                <?= $groups_search !== '' ? 'No groups match your search.' : 'No groups available yet.' ?>
             <?php endif; ?>
         </div>
 
@@ -468,6 +595,14 @@ include '../includes/navbar.php';
 
                 <?php
                 $group_name = (string) $group['group_name'];
+
+                // Standardize capitalization for display only.
+                $group_display_name = mb_convert_case(
+                    $group_name,
+                    MB_CASE_TITLE,
+                    'UTF-8'
+                );
+
                 $post_count = (int) $group['post_count'];
                 $contributor_count = (int) $group['contributor_count'];
 
@@ -507,7 +642,7 @@ include '../includes/navbar.php';
 
                         <h2 class="whusup-group-name">
                             <?= htmlspecialchars(
-                                $group_name,
+                                $group_display_name,
                                 ENT_QUOTES,
                                 'UTF-8'
                             ) ?>
@@ -590,7 +725,6 @@ include '../includes/navbar.php';
                 </a>
             <?php endif; ?>
 
-
         </nav>
 
     <?php endif; ?>
@@ -610,4 +744,3 @@ include '../includes/navbar.php';
 <?php
 include '../includes/footer.php';
 ?>
-

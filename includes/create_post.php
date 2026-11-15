@@ -1103,7 +1103,7 @@ $post_placeholder = "What's on your mind" . ($user_first_name !== "" ? " " . $us
                     id="tagInput"
                     class="post-tag-input"
                     maxlength="30"
-                    placeholder="Tags help group similar posts"
+                    placeholder="Tags create or add to groups"
                     value="<?= htmlspecialchars($_POST['tag'] ?? '') ?>"
                 >
 
