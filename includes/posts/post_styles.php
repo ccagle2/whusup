@@ -1109,4 +1109,16 @@ body.lightbox-open {
     box-shadow: 0 0 0 4px rgba(156, 163, 175, 0.18);
 }
 
+/* Keep the feed at its intended desktop width,
+   regardless of the content inside individual posts. */
+
+@media (min-width: 701px) {
+    .recent-posts-wrapper {
+        width: 100%;
+        max-width: 900px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+}
+
 </style>

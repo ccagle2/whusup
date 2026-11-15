@@ -15,6 +15,7 @@ include '../includes/navbar.php';
 $page = $_GET['page'] ?? 'social_feed';
 $sort = $_GET['sort'] ?? 'recent';
 $feed_filter = $_GET['filter'] ?? 'all';
+$dashboard_tag_search = trim((string) ($_GET['tag'] ?? ''));
 
 $dashboard_display_name = '';
 
@@ -47,11 +48,14 @@ if (!in_array($feed_filter, ['all', 'following', 'my_posts'], true)) {
     $feed_filter = 'all';
 }
 
+
 function dashboardUrl(
     $page_value = 'social_feed',
     $filter_value = null,
     $sort_value = null
 ) {
+    global $dashboard_tag_search;
+
     $query = [
         'page' => $page_value
     ];
@@ -64,8 +68,14 @@ function dashboardUrl(
         $query['sort'] = $sort_value;
     }
 
+    // Preserve the selected group when navigating the dashboard.
+    if ($dashboard_tag_search !== '') {
+        $query['tag'] = $dashboard_tag_search;
+    }
+
     return 'dashboard.php?' . http_build_query($query);
 }
+
 
 ?>
 

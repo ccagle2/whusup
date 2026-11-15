@@ -60,43 +60,14 @@ if ($recent_posts_ajax_request) {
 }
 
 /*
- * Load the top 10 tags by number of posts.
- * Group case-insensitively so capitalization variants count together.
+ * Build same-page navigation links while preserving the selected group.
+ * Do not preserve the offset when changing the sort mode.
  */
-$trending_tags = [];
-
-try {
-    $trendingStmt = $pdo->query("
-        SELECT
-            MIN(TRIM(tag)) AS tag,
-            COUNT(*) AS post_count,
-            MAX(DATE(created_at)) AS latest_post_date
-        FROM posts
-        WHERE tag IS NOT NULL
-          AND TRIM(tag) <> ''
-        GROUP BY LOWER(TRIM(tag))
-        ORDER BY
-            post_count DESC,
-            latest_post_date DESC,
-            tag ASC
-        LIMIT 15
-    ");
-
-    $trending_tags = $trendingStmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    error_log('Could not load trending tags: ' . $e->getMessage());
-    $trending_tags = [];
-}
-
-/*
- * Build a same-page URL for selecting or clearing a trending tag.
- * Preserve the current sort and feed filter.
- */
-$buildFeedTagUrl = static function (?string $tagValue) use ($sort, $feed_filter): string {
-    $baseUrl = strtok($_SERVER['REQUEST_URI'], '?');
+$buildFeedUrl = static function (string $targetSort, bool $clearTag = false) use ($feed_filter, $tag_search): string {
+    $path = strtok($_SERVER['REQUEST_URI'] ?? '/index.php', '?') ?: '/index.php';
     $query = [];
 
-    if (isset($_GET['page'])) {
+    if (isset($_GET['page']) && is_string($_GET['page'])) {
         $query['page'] = $_GET['page'];
     }
 
@@ -104,27 +75,22 @@ $buildFeedTagUrl = static function (?string $tagValue) use ($sort, $feed_filter)
         $query['filter'] = $feed_filter;
     }
 
-    if ($sort !== 'recent') {
-        $query['sort'] = $sort;
+    if ($targetSort !== 'recent') {
+        $query['sort'] = $targetSort;
     }
 
-    if ($tagValue !== null && trim($tagValue) !== '') {
-        $query['tag'] = trim($tagValue);
+    if (!$clearTag && $tag_search !== '') {
+        $query['tag'] = $tag_search;
     }
 
-    return $query
-        ? $baseUrl . '?' . http_build_query($query)
-        : $baseUrl;
+    return $path . ($query ? '?' . http_build_query($query) : '');
 };
 
 include __DIR__ . '/post_styles.php';
 ?>
 
 <style>
-/*
- * Keep Recent, Popular, and Trending on one horizontal row and
- * make all three pills identical in width and alignment.
- */
+/* All three feed navigation buttons share the same dimensions. */
 .sort-button-row {
     display: flex;
     flex-direction: row;
@@ -134,214 +100,47 @@ include __DIR__ . '/post_styles.php';
     gap: 10px;
 }
 
-.sort-button-row > .sort-button,
-.sort-button-row > .trending-sort-control {
+.sort-button-row > .sort-button {
     flex: 0 0 100px;
     width: 100px;
     min-width: 100px;
     max-width: 100px;
-}
-
-.sort-button-row > .sort-button {
+    height: 44px;
     box-sizing: border-box;
-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
+    gap: 6px;
     text-align: center;
     white-space: nowrap;
-}
-
-.trending-sort-control > .sort-button {
-    width: 100%;
-    min-width: 100%;
-    box-sizing: border-box;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    text-align: center;
-    white-space: nowrap;
-}
-
-.trending-sort-control {
-    position: relative;
-
-    display: inline-flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-}
-
-/*
- * Trending is an <a>, just like Recent and Popular, so it inherits
- * the exact same font rendering and .sort-button styling.
- */
-.trending-sort-button {
-    cursor: pointer;
-}
-
-/*
- * Trending dropdown.
- */
-.trending-tag-menu {
-    position: absolute;
-    top: calc(100% + 10px);
-    left: 50%;
-    z-index: 30;
-
-    width: min(310px, calc(100vw - 28px));
-    padding: 8px;
-
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 18px 45px rgba(15, 23, 42, 0.16),
-        0 4px 12px rgba(15, 23, 42, 0.08);
-
-    transform: translateX(-50%) translateY(-4px);
-
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-
-    transition:
-        opacity 0.16s ease,
-        transform 0.16s ease,
-        visibility 0.16s ease;
-}
-
-.trending-tag-menu.is-open {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-
-.trending-tag-menu-title {
-    padding: 7px 10px 8px;
-
-    color: #6b7280;
-
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.trending-tag-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.trending-tag-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 14px;
-
-    width: 100%;
-    padding: 9px 10px;
-
-    border-radius: 10px;
-
-    color: #374151;
     text-decoration: none;
+}
 
-    font-size: 13px;
+.groups-nav-icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.group-filter-clear {
+    margin-left: 10px;
     font-weight: 700;
-
-    box-sizing: border-box;
+    color: inherit;
+    text-decoration: underline;
 }
 
-.trending-tag-link:hover,
-.trending-tag-link.is-selected {
-    background: #f3f4f6;
-    color: #111827;
-}
-
-.trending-tag-name {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.trending-tag-count {
-    flex: 0 0 auto;
-
-    color: #9ca3af;
-
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.trending-tag-empty {
-    padding: 10px;
-
-    color: #6b7280;
-
-    font-size: 13px;
-    text-align: center;
-}
-
-.trending-tag-clear {
-    display: block;
-
-    margin-top: 6px;
-    padding: 8px 10px 5px;
-
-    border-top: 1px solid #f3f4f6;
-
-    color: #6b7280;
-    text-decoration: none;
-
-    font-size: 12px;
-    font-weight: 700;
-    text-align: center;
-}
-
-.trending-tag-clear:hover {
-    color: #111827;
-}
-
-/*
- * On mobile, pin the dropdown to the right side of Trending so the
- * dropdown expands leftward and stays inside the viewport.
- */
 @media (max-width: 700px) {
-    .sort-button-row {
-        flex-wrap: nowrap;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    .sort-button-row > .sort-button,
-    .sort-button-row > .trending-sort-control {
-        flex: 0 0 96px;
+    .sort-button-row { gap: 8px; }
+    .sort-button-row > .sort-button {
+        flex-basis: 96px;
         width: 96px;
         min-width: 96px;
         max-width: 96px;
-    }
-
-    .trending-tag-menu {
-        left: auto;
-        right: 0;
-
-        width: min(290px, calc(100vw - 20px));
-
-        transform: translateY(-4px);
-    }
-
-    .trending-tag-menu.is-open {
-        transform: translateY(0);
     }
 }
 </style>
@@ -350,96 +149,37 @@ include __DIR__ . '/post_styles.php';
 
     <div class="sort-button-row">
         <a
-            href="<?= htmlspecialchars(currentPostsUrl('recent')) ?>"
+            href="<?= htmlspecialchars($buildFeedUrl('recent'), ENT_QUOTES, 'UTF-8') ?>"
             class="sort-button <?= $sort === 'recent' ? 'active' : '' ?>"
         >
             Recent
         </a>
 
         <a
-            href="<?= htmlspecialchars(currentPostsUrl('popular')) ?>"
+            href="<?= htmlspecialchars($buildFeedUrl('popular'), ENT_QUOTES, 'UTF-8') ?>"
             class="sort-button <?= $sort === 'popular' ? 'active' : '' ?>"
         >
             Trending
         </a>
 
-        <div class="trending-sort-control" id="trendingSortControl">
-            <a
-                href="#"
-                class="sort-button trending-sort-button <?= $tag_search !== '' ? 'active' : '' ?>"
-                id="trendingSortButton"
-                role="button"
-                aria-haspopup="true"
-                aria-expanded="false"
-                aria-controls="trendingTagMenu"
-            >
-                Tags
-            </a>
-
-            <div
-                class="trending-tag-menu"
-                id="trendingTagMenu"
-                role="menu"
-                aria-label="Trending tags"
-            >
-                <div class="trending-tag-menu-title">
-                    Trending Tags
-                </div>
-
-                <?php if (!empty($trending_tags)): ?>
-                    <div class="trending-tag-list">
-                        <?php foreach ($trending_tags as $trendingTag): ?>
-                            <?php
-                                $trendingTagName = trim((string) ($trendingTag['tag'] ?? ''));
-                                $trendingTagCount = (int) ($trendingTag['post_count'] ?? 0);
-
-                                $isSelectedTrendingTag =
-                                    $tag_search !== ''
-                                    && strcasecmp($tag_search, $trendingTagName) === 0;
-                            ?>
-
-                            <?php if ($trendingTagName !== ''): ?>
-                                <a
-                                    href="<?= htmlspecialchars($buildFeedTagUrl($trendingTagName)) ?>"
-                                    class="trending-tag-link <?= $isSelectedTrendingTag ? 'is-selected' : '' ?>"
-                                    role="menuitem"
-                                >
-                                    <span class="trending-tag-name">
-                                        <?= htmlspecialchars($trendingTagName) ?>
-                                    </span>
-
-                                    <span
-                                        class="trending-tag-count"
-                                        title="<?= htmlspecialchars($trendingTagCount) ?> posts"
-                                    >
-                                        <?= htmlspecialchars(number_format($trendingTagCount)) ?>
-                                    </span>
-                                </a>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="trending-tag-empty">
-                        No trending tags yet.
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($tag_search !== ''): ?>
-                    <a
-                        href="<?= htmlspecialchars($buildFeedTagUrl(null)) ?>"
-                        class="trending-tag-clear"
-                    >
-                        Clear tag filter
-                    </a>
-                <?php endif; ?>
-            </div>
-        </div>
+        <a href="/groups.php" class="sort-button" aria-label="Explore groups">
+            <svg class="groups-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Groups
+        </a>
     </div>
 
     <?php if ($tag_search !== ''): ?>
         <div class="tag-filter-notice">
-            Showing posts tagged with
-            <strong><?= htmlspecialchars($tag_search) ?></strong>
+            Showing group: <strong><?= htmlspecialchars($tag_search, ENT_QUOTES, 'UTF-8') ?></strong>
+            <a
+                href="<?= htmlspecialchars($buildFeedUrl($sort, true), ENT_QUOTES, 'UTF-8') ?>"
+                class="group-filter-clear"
+            >Clear group</a>
         </div>
     <?php endif; ?>
 
@@ -514,46 +254,5 @@ include __DIR__ . '/post_styles.php';
 
     <div class="image-lightbox-dots" id="imageLightboxDots" aria-label="Image position"></div>
 </div>
-
-<script>
-(function () {
-    const control = document.getElementById("trendingSortControl");
-    const button = document.getElementById("trendingSortButton");
-    const menu = document.getElementById("trendingTagMenu");
-
-    if (!control || !button || !menu) {
-        return;
-    }
-
-    function setTrendingMenuOpen(isOpen) {
-        menu.classList.toggle("is-open", isOpen);
-        button.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    }
-
-    button.addEventListener("click", function (event) {
-        event.preventDefault();
-
-        setTrendingMenuOpen(
-            !menu.classList.contains("is-open")
-        );
-    });
-
-    document.addEventListener("click", function (event) {
-        if (!control.contains(event.target)) {
-            setTrendingMenuOpen(false);
-        }
-    });
-
-    document.addEventListener("keydown", function (event) {
-        if (
-            event.key === "Escape"
-            && menu.classList.contains("is-open")
-        ) {
-            setTrendingMenuOpen(false);
-            button.focus();
-        }
-    });
-})();
-</script>
 
 <?php include __DIR__ . '/post_scripts.php'; ?>

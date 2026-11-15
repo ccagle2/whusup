@@ -25,3 +25,7 @@ config/mail.php
 
 # Logs
 *.log
+
+# Local backup files
+*.bak
+*.bak.*
