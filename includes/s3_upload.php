@@ -1,11 +1,13 @@
 <?php
 
-function uploadToS3(array $file, string $folder = 'posts'): array
+function uploadToS3(array $file, string $folder = 'posts', $s3 = null, ?string $bucket = null): array
 {
-    $config = require __DIR__ . '/../config/aws.php';
-
-    $s3 = $config['s3'];
-    $bucket = $config['bucket'];
+    // Existing callers can omit these arguments; post creation reuses its clients.
+    if ($s3 === null || $bucket === null) {
+        $config = require __DIR__ . '/../config/aws.php';
+        $s3 = $s3 ?? $config['s3'];
+        $bucket = $bucket ?? $config['bucket'];
+    }
 
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return ['success' => false, 'error' => 'Upload failed.'];

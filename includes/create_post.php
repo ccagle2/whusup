@@ -113,96 +113,110 @@ function compress_uploaded_image(array $file): array {
     }
 
     $maxOriginalSize = 10 * 1024 * 1024;
-
     if ($file['size'] > $maxOriginalSize) {
         return ['success' => false, 'error' => 'Image must be 10MB or smaller.'];
     }
-
-    if (!function_exists('imagecreatefromjpeg')) {
+    if (!function_exists('imagecreatefromjpeg') || !function_exists('imagewebp')) {
         return ['success' => false, 'error' => 'Image compression is not available. PHP GD is missing.'];
     }
 
     $mimeType = mime_content_type($file['tmp_name']);
-
-    $allowedTypes = [
-        'image/jpeg',
-        'image/png',
-        'image/webp'
-    ];
-
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!in_array($mimeType, $allowedTypes, true)) {
         return ['success' => false, 'error' => 'Only JPG, PNG, and WEBP images are allowed.'];
     }
 
-    switch ($mimeType) {
-        case 'image/jpeg':
-            $sourceImage = imagecreatefromjpeg($file['tmp_name']);
-            if ($sourceImage) {
-                $sourceImage = fix_image_orientation($sourceImage, $file['tmp_name']);
-            }
-            break;
+    $sourceImage = false;
+    $newImage = false;
+    $feedImage = false;
+    $jpegPath = false;
+    $webpPath = false;
 
-        case 'image/png':
-            $sourceImage = imagecreatefrompng($file['tmp_name']);
-            break;
+    try {
+        switch ($mimeType) {
+            case 'image/jpeg':
+                $sourceImage = @imagecreatefromjpeg($file['tmp_name']);
+                if ($sourceImage) {
+                    $oriented = fix_image_orientation($sourceImage, $file['tmp_name']);
+                    if ($oriented !== $sourceImage) {
+                        imagedestroy($sourceImage);
+                        $sourceImage = $oriented;
+                    }
+                }
+                break;
+            case 'image/png':
+                $sourceImage = @imagecreatefrompng($file['tmp_name']);
+                break;
+            case 'image/webp':
+                $sourceImage = @imagecreatefromwebp($file['tmp_name']);
+                break;
+        }
+        if (!$sourceImage) {
+            throw new RuntimeException('Could not process image.');
+        }
 
-        case 'image/webp':
-            $sourceImage = imagecreatefromwebp($file['tmp_name']);
-            break;
+        $width = imagesx($sourceImage);
+        $height = imagesy($sourceImage);
+        $ratio = min(1600 / $width, 1600 / $height, 1);
+        $newWidth = max(1, (int) round($width * $ratio));
+        $newHeight = max(1, (int) round($height * $ratio));
 
-        default:
-            return ['success' => false, 'error' => 'Unsupported image type.'];
+        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+        if (!$newImage) {
+            throw new RuntimeException('Could not process image.');
+        }
+        // Preserve white background for transparent images converted to JPEG.
+        $white = imagecolorallocate($newImage, 255, 255, 255);
+        imagefill($newImage, 0, 0, $white);
+        if (!imagecopyresampled($newImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height)) {
+            throw new RuntimeException('Could not resize image.');
+        }
+        // Source pixels are no longer needed. Generate both formats from the
+        // same oriented/resized image without decoding the JPEG a second time.
+        imagedestroy($sourceImage);
+        $sourceImage = false;
+
+        $jpegPath = tempnam(sys_get_temp_dir(), 'whusup_img_');
+        if ($jpegPath === false || !imagejpeg($newImage, $jpegPath, 82) || filesize($jpegPath) === 0) {
+            throw new RuntimeException('JPEG encoding failed.');
+        }
+
+        $feedRatio = min(1.0, 960 / max($newWidth, $newHeight));
+        $feedWidth = max(1, (int) round($newWidth * $feedRatio));
+        $feedHeight = max(1, (int) round($newHeight * $feedRatio));
+        $feedImage = imagecreatetruecolor($feedWidth, $feedHeight);
+        if (!$feedImage) {
+            throw new RuntimeException('Unable to allocate WebP image.');
+        }
+        $feedWhite = imagecolorallocate($feedImage, 255, 255, 255);
+        imagefill($feedImage, 0, 0, $feedWhite);
+        if (!imagecopyresampled($feedImage, $newImage, 0, 0, 0, 0, $feedWidth, $feedHeight, $newWidth, $newHeight)) {
+            throw new RuntimeException('Unable to resize WebP image.');
+        }
+        $webpPath = tempnam(sys_get_temp_dir(), 'whusup_webp_');
+        if ($webpPath === false || !imagewebp($feedImage, $webpPath, 80) || filesize($webpPath) === 0) {
+            throw new RuntimeException('WebP encoding failed.');
+        }
+
+        return [
+            'success' => true,
+            'tmp_name' => $jpegPath,
+            'feed_tmp_name' => $webpPath,
+            'name' => bin2hex(random_bytes(16)) . '.jpg',
+            'type' => 'image/jpeg',
+            'size' => filesize($jpegPath),
+            'error' => UPLOAD_ERR_OK
+        ];
+    } catch (Throwable $e) {
+        error_log('Image processing failed: ' . $e->getMessage());
+        if ($jpegPath !== false) { @unlink($jpegPath); }
+        if ($webpPath !== false) { @unlink($webpPath); }
+        return ['success' => false, 'error' => 'Could not process image. Please try another image.'];
+    } finally {
+        if ($feedImage) { imagedestroy($feedImage); }
+        if ($newImage) { imagedestroy($newImage); }
+        if ($sourceImage) { imagedestroy($sourceImage); }
     }
-
-    if (!$sourceImage) {
-        return ['success' => false, 'error' => 'Could not process image.'];
-    }
-
-    $width = imagesx($sourceImage);
-    $height = imagesy($sourceImage);
-
-    $maxWidth = 1600;
-    $maxHeight = 1600;
-
-    $ratio = min($maxWidth / $width, $maxHeight / $height, 1);
-
-    $newWidth = (int) round($width * $ratio);
-    $newHeight = (int) round($height * $ratio);
-
-    $newImage = imagecreatetruecolor($newWidth, $newHeight);
-
-    // Fill with white first so transparent PNG/WEBP images do not turn black when converted to JPG.
-    $white = imagecolorallocate($newImage, 255, 255, 255);
-    imagefill($newImage, 0, 0, $white);
-
-    imagecopyresampled(
-        $newImage,
-        $sourceImage,
-        0,
-        0,
-        0,
-        0,
-        $newWidth,
-        $newHeight,
-        $width,
-        $height
-    );
-
-    $tempPath = tempnam(sys_get_temp_dir(), 'whusup_img_') . '.jpg';
-
-    imagejpeg($newImage, $tempPath, 82);
-
-    imagedestroy($sourceImage);
-    imagedestroy($newImage);
-
-    return [
-        'success' => true,
-        'tmp_name' => $tempPath,
-        'name' => bin2hex(random_bytes(16)) . '.jpg',
-        'type' => 'image/jpeg',
-        'size' => filesize($tempPath),
-        'error' => UPLOAD_ERR_OK
-    ];
 }
 
 function imagePassesModeration($rekognition, $bucket, $imageKey): array
@@ -324,57 +338,23 @@ function delete_s3_object_if_exists($s3, $bucket, $imageKey): void
 }
 
 /** Generate a feed-sized WebP from the already-oriented compressed JPEG. */
-function whusupUploadFeedVariant($s3, string $bucket, string $originalKey, string $jpegPath): void
+function whusupUploadFeedVariant($s3, string $bucket, string $originalKey, string $webpPath): void
 {
     $variantKey = whusupFeedWebpKey($originalKey);
     if (!$s3 || $bucket === '' || $variantKey === null) {
         throw new RuntimeException('WebP variant configuration is unavailable.');
     }
-    $source = @imagecreatefromjpeg($jpegPath);
-    if (!$source) {
-        throw new RuntimeException('Unable to read compressed JPEG for WebP.');
+    if (!is_file($webpPath) || filesize($webpPath) === 0) {
+        throw new RuntimeException('WebP variant file is unavailable.');
     }
-    try {
-        $width = imagesx($source);
-        $height = imagesy($source);
-        $ratio = min(1.0, 960 / max($width, $height));
-        $newWidth = max(1, (int) round($width * $ratio));
-        $newHeight = max(1, (int) round($height * $ratio));
-        $resized = imagecreatetruecolor($newWidth, $newHeight);
-        if (!$resized) {
-            throw new RuntimeException('Unable to allocate WebP image.');
-        }
-        try {
-            $white = imagecolorallocate($resized, 255, 255, 255);
-            imagefill($resized, 0, 0, $white);
-            if (!imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height)) {
-                throw new RuntimeException('Unable to resize WebP image.');
-            }
-            $tempPath = tempnam(sys_get_temp_dir(), 'whusup_webp_');
-            if ($tempPath === false) {
-                throw new RuntimeException('Unable to create WebP temporary file.');
-            }
-            try {
-                if (!imagewebp($resized, $tempPath, 80) || filesize($tempPath) === 0) {
-                    throw new RuntimeException('WebP encoding failed.');
-                }
-                $s3->putObject([
-                    'Bucket' => $bucket,
-                    'Key' => $variantKey,
-                    'SourceFile' => $tempPath,
-                    'ContentType' => 'image/webp',
-                    'CacheControl' => 'public, max-age=31536000, immutable',
-                    'ServerSideEncryption' => 'AES256',
-                ]);
-            } finally {
-                @unlink($tempPath);
-            }
-        } finally {
-            imagedestroy($resized);
-        }
-    } finally {
-        imagedestroy($source);
-    }
+    $s3->putObject([
+        'Bucket' => $bucket,
+        'Key' => $variantKey,
+        'SourceFile' => $webpPath,
+        'ContentType' => 'image/webp',
+        'CacheControl' => 'public, max-age=31536000, immutable',
+        'ServerSideEncryption' => 'AES256',
+    ]);
 }
 
 /** Remove the original and deterministic variant during failed post creation. */
@@ -505,10 +485,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
-                $uploadResult = uploadToS3($compressedImage, 'posts');
+                $uploadResult = uploadToS3($compressedImage, 'posts', $s3, $s3Bucket);
 
                 if (!$uploadResult['success']) {
                     @unlink($compressedImage['tmp_name']);
+                    @unlink($compressedImage['feed_tmp_name']);
                     $message = $uploadResult['error'];
                     break;
                 }
@@ -519,17 +500,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $moderationResult = imagePassesModeration($rekognition, $s3Bucket, $imageKey);
                 if (!$moderationResult['success'] || !$moderationResult['passed']) {
                     @unlink($compressedImage['tmp_name']);
+                    @unlink($compressedImage['feed_tmp_name']);
                     $message = $moderationResult['message'] ?: 'One of your images cannot be uploaded.';
                     break;
                 }
 
                 try {
-                    whusupUploadFeedVariant($s3, (string) $s3Bucket, $imageKey, $compressedImage['tmp_name']);
+                    whusupUploadFeedVariant($s3, (string) $s3Bucket, $imageKey, $compressedImage['feed_tmp_name']);
                 } catch (Throwable $e) {
                     error_log('WebP variant upload failed: ' . $e->getMessage());
                     $message = 'Image optimization failed. Please try again.';
                 } finally {
                     @unlink($compressedImage['tmp_name']);
+                    @unlink($compressedImage['feed_tmp_name']);
                 }
                 if ($message !== '') {
                     break;
@@ -1382,6 +1365,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
             submitButton.disabled = true;
             submitButton.textContent = "Posting...";
+
+            event.preventDefault();
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    HTMLFormElement.prototype.submit.call(postForm);
+                });
+            });
+
         });
     }
 
